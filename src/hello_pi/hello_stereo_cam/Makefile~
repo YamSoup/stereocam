@@ -1,0 +1,6 @@
+OBJS=stereo_cam.o
+BIN=hello_sterep_cam.bin
+LDFLAGS+=-lilclient
+
+include ../Makefile.include
+
