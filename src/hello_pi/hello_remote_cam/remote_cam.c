@@ -1,11 +1,11 @@
 /*
-Remote Camera 
+Remote Camera
 
 Must accept commands from the main Pi
 
 Commands should include
    Take Photo
-   Set Preview Resolution
+   Request Preview Resolution (include in start preview)
    Start Preview
    Stop Preview
 
@@ -22,9 +22,6 @@ Even while displaying preview remote camera should accept and process commands
 The commands will be identified by an integer followed by the relevent(if any) information to be processed
 when no command is needed the main pi will send 0 commands will use the same TCP connection
  */
-
-
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,27 +41,50 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 #define SOCKTYPE_TCP 1
 #define SOCKTYPE_UDP 2
 
-//fuction prototypes
-int getAndConnectSocket(int socket_type);
+//possibly put this enum in a header file to easily include in other programs
+enum rcam_command
+{
+    NO_COMMAND = 0,
+    SET_PREVIEW_RES = 10,
+    SET_PREVIEW_FRAMERATE = 11,
+    START_PREVIEW = 20,
+    STOP_PREVIEW = 21,
+    TAKE_PHOTO = 30
+};
 
+
+//function prototypes
+int getAndConnectSocket(int socket_type);
 
 // MAIN
 
 int main(int argc, char *argv[])
 {
-  int numbytes;
-  int socket_fd;
+    int numbytes, preview_width, preview_height;
+    int socket_fd;
+    enum rcam_command current_command;
+    bool deliver_preview = false;
 
-  socket_fd = getAndConnectSocket(SOCKTYPE_UDP);
-  printf("socket_fd = %d", socket_fd);
+    socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
+    printf("socket_fd = %d", socket_fd);
 
-  
+    //recv command
+    recv(socket_fd, command, sizeof(rcam_command), 0);
 
-  return 0;
+    //process command
+    if(current_command == NO_COMMAND)
+        ; //do nothing
+    else if (current_command == SET_PREVIEW_RES)
+    {
+        recv(socket_fd, preview_width, sizeof(int), 0);
+        recv(socket_fd, preview_height, sizeof(int), 0);
+    }
+
+    return 0;
 }
 
 
-//fuctions
+//functions
 //returns a bound socket
 int getAndConnectSocket(int socket_type)
 {
@@ -109,7 +129,7 @@ int getAndConnectSocket(int socket_type)
 	  fprintf(stderr, "Error connecting to socket\n");
 	  continue;
 	}
-      
+
       break;
     }
 
