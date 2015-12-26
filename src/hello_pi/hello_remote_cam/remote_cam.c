@@ -73,11 +73,44 @@ int main(int argc, char *argv[])
 
     //process command
     if(current_command == NO_COMMAND)
-        ; //do nothing
+    {
+        //do nothing
+    }
     else if (current_command == SET_PREVIEW_RES)
     {
         recv(socket_fd, preview_width, sizeof(int), 0);
         recv(socket_fd, preview_height, sizeof(int), 0);
+        //check resolution is sane
+        //use resv information to change the preview res
+    }
+    else if (current_command == START_PREVIEW)
+    {
+        //check if preview is already running
+        if (deliver_preview = true)
+        {
+            fprintf(stderr, "Preview is already running");
+            //possibly send error back to other app
+        }
+        else
+        {
+            //start preview
+
+            //change deliver_preview to true
+            deliver_preview = true;
+        }
+    }
+    else if (current_command == STOP_PREVIEW)
+    {
+        //stop preview
+
+        //change deliver_preview to false
+        deliver_preview == false;
+
+    }
+    else if (current_command == TAKE_PHOTO)
+    {
+        //take photo
+
     }
 
     return 0;
