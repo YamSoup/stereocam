@@ -65,6 +65,35 @@ int main(int argc, char *argv[])
     enum rcam_command current_command;
     bool deliver_preview = false;
 
+    ILCLIENT_T *client;
+    COMPONENT_T *camera;
+    OMX_ERRORTYPE OMXstatus;
+
+    //initialize camera stuff
+
+    //initialize bcm host
+    bcm_host_init();
+
+    //create client
+    client = ilclient_init();
+    if(client == NULL)
+    {
+        fprintf(stderr, "unable to initialize ilclient\n");
+        exit(EXIT_FAILURE);
+    }
+
+    //initialize OMX
+    OMXstatus = OMX_Init();
+    if (OMXstatus != OMX_ErrorNone)
+    {
+        fprintf(stderr, "unable to initialize OMX");
+        ilclient_destroy(client);
+        exit(EXIT_FAILURE);
+    }
+
+    // set error callback
+
+    //////////////////////////////////
     socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
     printf("socket_fd = %d", socket_fd);
 
