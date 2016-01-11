@@ -35,6 +35,9 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include "bcm_host.h"
+#include "ilclient.h"
+
 #define IP_ADD "127.0.0.1"
 #define SERV_PORT "8033"
 
@@ -74,7 +77,14 @@ int main(int argc, char *argv[])
     COMPONENT_T *camera;
     OMX_ERRORTYPE OMXstatus;
 
-    //initialize camera stuff
+    //INITIALIZE CAMERA STUFF
+    //camera data structures
+    //res structure (used in more than 1 area
+    OMX_PARAM_PORTDEFINITIONTYPE port_params;
+    memset(&port_params, 0, sizeof(port_params));
+    port_params.nVersion.nVersion = OMX_VERSION;
+    port_params.nSize = sizeof(port_params);
+    port_params.nPortIndex = 72;
 
     //initialize bcm host
     bcm_host_init();
@@ -101,7 +111,54 @@ int main(int argc, char *argv[])
                                 error_callback,
                                 NULL);
 
+    //initialize camera
+    ilclient_create_component(client,
+                              &camera,
+                              "camera",
+                              ILCLIENT_DISABLE_ALL_PORTS);
+    OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+    if (OMXstatus != OMX_ErrorNone)
+    {
+        fprintf(stderr, "unable to move camera component to Idle (1)");
+        exit(EXIT_FAILURE);
+    }
+    //set the capture resolution
+    OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if(OMXstatus != OMX_ErrorNone)
+        printf("Error Getting Paramter. Error = %s\n", err2str(OMXstatus));
+    //change needed params
+    port_params.format.image.nFrameWidth = 2592; //maxsettings
+    port_params.format.image.nFrameHeight = 1944;
+    port_params.format.image.nStride = 0; //needed! set to 0 to recalculate
+    port_params.format.image.nSliceHeight = 0;  //notneeded?
+    //set changes
+    OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if(OMXstatus != OMX_ErrorNone)
+        printf("Error Setting Paramter. Error = %s\n", err2str(OMXstatus));
 
+    //set default preview resolution
+    //reuse port params
+    memset(&port_params, 0, sizeof(port_params));
+    port_params.nVersion.nVersion = OMX_VERSION;
+    port_params.nSize = sizeof(port_params);
+    port_params.nPortIndex = 70;
+    //prepopulate structure
+    OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if (OMXstatus != OMX_ErrorNone)
+        printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
+    //change needed params
+    port_params.format.video.nFrameWidth = 320;
+    port_params.format.video.nFrameHeight = 240;
+    port_params.format.video.nStride = 0;
+    port_params.format.video.nSliceHeight = 0;
+    port_params.format.video.nBitrate = 0;
+    port_params.format.video.xFramerate = 0;
+    //set changes
+    OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if (OMXstatus != OMX_ErrorNone)
+        printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
+
+    //SOCKET STUFF
     socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
     printf("socket_fd = %d", socket_fd);
 
