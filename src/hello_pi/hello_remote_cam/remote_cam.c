@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     printf("socket_fd = %d", socket_fd);
 
     //recv command
-    recv(socket_fd, command, sizeof(rcam_command), 0);
+    recv(socket_fd, &current_command, sizeof(current_command), 0);
 
     //process command
     if(current_command == NO_COMMAND)
@@ -173,15 +173,15 @@ int main(int argc, char *argv[])
     }
     else if (current_command == SET_PREVIEW_RES)
     {
-        recv(socket_fd, preview_width, sizeof(int), 0);
-        recv(socket_fd, preview_height, sizeof(int), 0);
+        recv(socket_fd, &preview_width, sizeof(int), 0);
+        recv(socket_fd, &preview_height, sizeof(int), 0);
         //check resolution is sane
         //use resv information to change the preview res
     }
     else if (current_command == START_PREVIEW)
     {
         //check if preview is already running
-        if (deliver_preview = true)
+        if (deliver_preview == true)
         {
             fprintf(stderr, "Preview is already running");
             //possibly send error back to other app
