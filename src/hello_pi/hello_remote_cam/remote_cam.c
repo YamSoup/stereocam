@@ -50,9 +50,12 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 ////////////////////////////////////////////////////////////////
 
 char *err2str(int err);
+
 void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
 int getAndConnectSocket(int socket_type);
+
+void setPreviewRes(COMPONENT_T *camera, int width, int height)
 
 //possibly put this enum in a header file to easily include in other programs
 enum rcam_command
@@ -212,7 +215,40 @@ int main(int argc, char *argv[])
 }
 
 
-//functions
+/////////////////////////////////////////////////////////
+// FUNCTIONS
+/////////////////////////////////////////////////////////
+
+//set preview res
+void setPreviewRes(COMPONENT_T *camera, int width, int height)
+{
+    //needs to check width and height to see if compatible with rpi
+
+    OMX_PARAM_PORTDEFINITIONTYPE port_params;
+
+    memset(&port_params, 0, sizeof(port_params));
+    port_params.nVersion.nVersion = OMX_VERSION;
+    port_params.nSize = sizeof(port_params);
+    port_params.nPortIndex = 70;
+    //prepopulate structure
+    OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if (OMXstatus != OMX_ErrorNone)
+        printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
+    //change needed params
+    port_params.format.video.nFrameWidth = width;
+    port_params.format.video.nFrameHeight = height;
+    port_params.format.video.nStride = 0;
+    port_params.format.video.nSliceHeight = 0;
+    port_params.format.video.nBitrate = 0;
+    port_params.format.video.xFramerate = 0;
+    //set changes
+    OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if (OMXstatus != OMX_ErrorNone)
+        printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
+
+}
+
+
 //returns a bound socket
 int getAndConnectSocket(int socket_type)
 {
@@ -270,11 +306,6 @@ int getAndConnectSocket(int socket_type)
   freeaddrinfo(servinfo);
   return sockfd;
 }
-
-/////////////////////////////////////////////////////////
-// FUNCTIONS
-/////////////////////////////////////////////////////////
-
 
 void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data)
 {
