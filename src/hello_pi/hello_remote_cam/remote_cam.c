@@ -25,6 +25,7 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
