@@ -141,26 +141,7 @@ int main(int argc, char *argv[])
         printf("Error Setting Paramter. Error = %s\n", err2str(OMXstatus));
 
     //set default preview resolution
-    //reuse port params
-    memset(&port_params, 0, sizeof(port_params));
-    port_params.nVersion.nVersion = OMX_VERSION;
-    port_params.nSize = sizeof(port_params);
-    port_params.nPortIndex = 70;
-    //prepopulate structure
-    OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
-    if (OMXstatus != OMX_ErrorNone)
-        printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
-    //change needed params
-    port_params.format.video.nFrameWidth = 320;
-    port_params.format.video.nFrameHeight = 240;
-    port_params.format.video.nStride = 0;
-    port_params.format.video.nSliceHeight = 0;
-    port_params.format.video.nBitrate = 0;
-    port_params.format.video.xFramerate = 0;
-    //set changes
-    OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
-    if (OMXstatus != OMX_ErrorNone)
-        printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
+    setPreviewRes(camera, 320, 240);
 
     //SOCKET STUFF
     socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
