@@ -55,7 +55,7 @@ void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
 int getAndConnectSocket(int socket_type);
 
-void setPreviewRes(COMPONENT_T *camera, int width, int height)
+void setPreviewRes(COMPONENT_T *camera, int width, int height);
 
 //possibly put this enum in a header file to easily include in other programs
 enum rcam_command
@@ -206,6 +206,7 @@ void setPreviewRes(COMPONENT_T *camera, int width, int height)
     //needs to check width and height to see if compatible with rpi
 
     OMX_PARAM_PORTDEFINITIONTYPE port_params;
+    OMX_ERRORTYPE OMXstatus;
 
     memset(&port_params, 0, sizeof(port_params));
     port_params.nVersion.nVersion = OMX_VERSION;
