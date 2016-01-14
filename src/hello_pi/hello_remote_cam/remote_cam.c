@@ -84,13 +84,6 @@ int main(int argc, char *argv[])
     OMX_ERRORTYPE OMXstatus;
 
     //INITIALIZE CAMERA STUFF
-    //camera data structures
-    //res structure (used in more than 1 area
-    OMX_PARAM_PORTDEFINITIONTYPE port_params;
-    memset(&port_params, 0, sizeof(port_params));
-    port_params.nVersion.nVersion = OMX_VERSION;
-    port_params.nSize = sizeof(port_params);
-    port_params.nPortIndex = 72;
 
     //initialize bcm host
     bcm_host_init();
@@ -133,6 +126,15 @@ int main(int argc, char *argv[])
 
     //set default preview resolution
     setPreviewRes(camera, 320, 240);
+
+    //change the camera state to executing
+    OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
+    if (OMXstatus != OMX_ErrorNone)
+    {
+        fprintf(stderr, "unable to move camera component to Executing (1)\n");
+        exit(EXIT_FAILURE);
+    }
+    printState(ilclient_get_handle(camera));
 
     //SOCKET STUFF
     socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
