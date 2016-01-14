@@ -55,6 +55,8 @@ void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
 int getAndConnectSocket(int socket_type);
 
+void setCaptureRes(COMPONENT_T *camera, int width, int height)
+
 void setPreviewRes(COMPONENT_T *camera, int width, int height)
 
 //possibly put this enum in a header file to easily include in other programs
@@ -127,18 +129,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     //set the capture resolution
-    OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
-    if(OMXstatus != OMX_ErrorNone)
-        printf("Error Getting Paramter. Error = %s\n", err2str(OMXstatus));
-    //change needed params
-    port_params.format.image.nFrameWidth = 2592; //maxsettings
-    port_params.format.image.nFrameHeight = 1944;
-    port_params.format.image.nStride = 0; //needed! set to 0 to recalculate
-    port_params.format.image.nSliceHeight = 0;  //notneeded?
-    //set changes
-    OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
-    if(OMXstatus != OMX_ErrorNone)
-        printf("Error Setting Paramter. Error = %s\n", err2str(OMXstatus));
+    setCaptureRes(camera, 2592, 1944);
 
     //set default preview resolution
     setPreviewRes(camera, 320, 240);
@@ -157,10 +148,11 @@ int main(int argc, char *argv[])
     }
     else if (current_command == SET_PREVIEW_RES)
     {
-        recv(socket_fd, &preview_width, sizeof(int), 0);
         recv(socket_fd, &preview_height, sizeof(int), 0);
-        //check resolution is sane
+        recv(socket_fd, &preview_width, sizeof(int), 0);
+        //check resolution is sane and alter if not
         //use resv information to change the preview res
+        setPreviewRes(camera, preview_height, preview_width);
     }
     else if (current_command == START_PREVIEW)
     {
@@ -199,6 +191,26 @@ int main(int argc, char *argv[])
 /////////////////////////////////////////////////////////
 // FUNCTIONS
 /////////////////////////////////////////////////////////
+
+//set captur res
+void setCaptureRes(COMPONENT_T *camera, int width, int height)
+{
+    OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if(OMXstatus != OMX_ErrorNone)
+        printf("Error Getting Paramter. Error = %s\n", err2str(OMXstatus));
+    //change needed params
+    port_params.format.image.nFrameWidth = width; //maxsettings
+    port_params.format.image.nFrameHeight = height;
+    port_params.format.image.nStride = 0; //needed! set to 0 to recalculate
+    port_params.format.image.nSliceHeight = 0;  //notneeded?
+    //set changes
+    OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+    if(OMXstatus != OMX_ErrorNone)
+        printf("Error Setting Paramter. Error = %s\n", err2str(OMXstatus));
+}
+
+
+
 
 //set preview res
 void setPreviewRes(COMPONENT_T *camera, int width, int height)
