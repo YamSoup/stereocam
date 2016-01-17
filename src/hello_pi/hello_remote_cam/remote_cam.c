@@ -87,8 +87,7 @@ int main(int argc, char *argv[])
     COMPONENT_T *camera;
     OMX_ERRORTYPE OMXstatus;
 
-    OMX_BUFFERHEADERTYPE previewNullSink = NULL;
-    OMX_BUFFERHEADERTYPE previewHeader;
+    OMX_BUFFERHEADERTYPE **previewHeader;
 
     //INITIALIZE CAMERA STUFF
 
@@ -129,9 +128,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-
-
-
+    ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
 
     //change the camera state to executing
     OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
@@ -201,10 +198,16 @@ int main(int argc, char *argv[])
     //if preview is running deliver preview
     if (deliver_preview == true)
     {
+        memset(&previewHeader, 0, sizeof(previewHeader));
+        previewHeader.nVersion.nVersion = OMX_VERSION;
+        previewHeader.nSize = sizeof(previewHeader);
+        previewHeader.nOutputPortIndex = 70;
         //deliver preview
+        OMX_FillThisBuffer(camera, &previewHeader);
+
         //needs to check lengths to ensure all data is sent
-        send(socket_fd, BUFFER_HEADER, sizeof(), 0)
-        send(socker_fd, BUFFER, sizeof(), 0
+        //send(socket_fd, BUFFER_HEADER, sizeof(), 0)
+        //send(socker_fd, BUFFER, sizeof(), 0
     }
     else
     {
@@ -242,6 +245,7 @@ void setCaptureRes(COMPONENT_T *camera, int width, int height)
     OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if(OMXstatus != OMX_ErrorNone)
         printf("Error Setting Parameter In setCaptureRes. Error = %s\n", err2str(OMXstatus));
+
 }
 
 
@@ -274,7 +278,6 @@ void setPreviewRes(COMPONENT_T *camera, int width, int height)
     OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if (OMXstatus != OMX_ErrorNone)
         printf("Error Setting Parameter In setPreviewRes. Error = %s\n", err2str(OMXstatus));
-
 }
 
 
