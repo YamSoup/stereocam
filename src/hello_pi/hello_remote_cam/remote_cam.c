@@ -87,6 +87,9 @@ int main(int argc, char *argv[])
     COMPONENT_T *camera;
     OMX_ERRORTYPE OMXstatus;
 
+    OMX_BUFFERHEADERTYPE previewNullSink = NULL;
+    OMX_BUFFERHEADERTYPE previewHeader;
+
     //INITIALIZE CAMERA STUFF
 
     //initialize bcm host
@@ -125,6 +128,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unable to move camera component to Idle (1)");
         exit(EXIT_FAILURE);
     }
+
+
+
+
+
     //change the camera state to executing
     OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
     if (OMXstatus != OMX_ErrorNone)
@@ -149,6 +157,8 @@ int main(int argc, char *argv[])
     //recv command
     recv(socket_fd, &current_command, sizeof(current_command), 0);
 
+    //handshake?
+
     //process command
     if(current_command == NO_COMMAND)
     {
@@ -172,8 +182,6 @@ int main(int argc, char *argv[])
         }
         else
         {
-            //start preview
-
             //change deliver_preview to true
             deliver_preview = true;
         }
@@ -181,7 +189,6 @@ int main(int argc, char *argv[])
     else if (current_command == STOP_PREVIEW)
     {
         //stop preview
-
         //change deliver_preview to false
         deliver_preview == false;
 
@@ -189,7 +196,19 @@ int main(int argc, char *argv[])
     else if (current_command == TAKE_PHOTO)
     {
         //take photo
+    }
 
+    //if preview is running deliver preview
+    if (deliver_preview == true)
+    {
+        //deliver preview
+        //needs to check lengths to ensure all data is sent
+        send(socket_fd, BUFFER_HEADER, sizeof(), 0)
+        send(socker_fd, BUFFER, sizeof(), 0
+    }
+    else
+    {
+        //do nothing
     }
 
     return 0;
