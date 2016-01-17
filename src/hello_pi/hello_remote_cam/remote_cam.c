@@ -49,15 +49,19 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 // FUNCTION PROTOTYPES
 ////////////////////////////////////////////////////////////////
 
-char *err2str(int err);
-
-void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
-
 int getAndConnectSocket(int socket_type);
 
 void setCaptureRes(COMPONENT_T *camera, int width, int height);
 
 void setPreviewRes(COMPONENT_T *camera, int width, int height);
+
+void printBits(void *toPrint);
+
+void printState(OMX_HANDLETYPE handle);
+
+char *err2str(int err);
+
+void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
 //possibly put this enum in a header file to easily include in other programs
 enum rcam_command
@@ -128,6 +132,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unable to move camera component to Executing (1)\n");
         exit(EXIT_FAILURE);
     }
+    printState(ilclient_get_handle(camera));
+
 
     //set the capture resolution
     setCaptureRes(camera, 2592, 1944);
@@ -152,7 +158,7 @@ int main(int argc, char *argv[])
     {
         recv(socket_fd, &preview_height, sizeof(int), 0);
         recv(socket_fd, &preview_width, sizeof(int), 0);
-        //check resolution is sane and alter if not
+        //check resolution is sane and alter if not (or do in setPreviewRes function)
         //use resv information to change the preview res
         setPreviewRes(camera, preview_height, preview_width);
     }
@@ -207,7 +213,7 @@ void setCaptureRes(COMPONENT_T *camera, int width, int height)
 
     OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if(OMXstatus != OMX_ErrorNone)
-        printf("Error Getting Paramter Meep. Error = %s\n", err2str(OMXstatus));
+        printf("Error Getting Parameter In setCaptureRes. Error = %s\n", err2str(OMXstatus));
     //change needed params
     port_params.format.image.nFrameWidth = width; //maxsettings
     port_params.format.image.nFrameHeight = height;
@@ -216,7 +222,7 @@ void setCaptureRes(COMPONENT_T *camera, int width, int height)
     //set changes
     OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if(OMXstatus != OMX_ErrorNone)
-        printf("Error Setting Paramter Meep. Error = %s\n", err2str(OMXstatus));
+        printf("Error Setting Parameter In setCaptureRes. Error = %s\n", err2str(OMXstatus));
 }
 
 
@@ -237,7 +243,7 @@ void setPreviewRes(COMPONENT_T *camera, int width, int height)
     //prepopulate structure
     OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if (OMXstatus != OMX_ErrorNone)
-        printf("Error Getting Parameter Moop. Error = %s\n", err2str(OMXstatus));
+        printf("Error Getting Parameter In setPreviewRes. Error = %s\n", err2str(OMXstatus));
     //change needed params
     port_params.format.video.nFrameWidth = width;
     port_params.format.video.nFrameHeight = height;
@@ -248,7 +254,7 @@ void setPreviewRes(COMPONENT_T *camera, int width, int height)
     //set changes
     OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if (OMXstatus != OMX_ErrorNone)
-        printf("Error Setting Parameter Moop. Error = %s\n", err2str(OMXstatus));
+        printf("Error Setting Parameter In setPreviewRes. Error = %s\n", err2str(OMXstatus));
 
 }
 
@@ -311,12 +317,7 @@ int getAndConnectSocket(int socket_type)
   return sockfd;
 }
 
-void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data)
-{
-  fprintf(stderr, "OMX error %s\n", err2str(data));
-}
-
-
+//converts OMX error to readable string
 char *err2str(int err) {
   switch (err) {
   case OMX_ErrorInsufficientResources: return "OMX_ErrorInsufficientResources";
@@ -360,3 +361,50 @@ char *err2str(int err) {
   }
 }
 
+//error callback for OMX
+void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data)
+{
+  fprintf(stderr, "OMX error %s\n", err2str(data));
+}
+
+//Prints the 0's and 1's of a char (8 bit byte)
+
+void printBits(void *toPrint)
+{
+  unsigned char *b = (unsigned char*) toPrint;
+  unsigned char byte;
+  int i, j;
+  size_t size = sizeof(*toPrint);
+
+  for (i = size -1; i >= 0; i--)
+    {
+      for (j = 7; j >= 0; j--)
+	{
+	  byte = b[i] & (1<<j);
+	  byte >>= j;
+	  printf("%u", byte);
+	}
+    }
+}
+
+//Prints the state of a component
+
+void printState(OMX_HANDLETYPE handle) {
+  OMX_STATETYPE state;
+  OMX_ERRORTYPE err;
+
+  err = OMX_GetState(handle, &state);
+  if (err != OMX_ErrorNone) {
+    fprintf(stderr, "Error on getting state\n");
+    exit(1);
+  }
+  switch (state) {
+  case OMX_StateLoaded:           printf("StateLoaded\n"); break;
+  case OMX_StateIdle:             printf("StateIdle\n"); break;
+  case OMX_StateExecuting:        printf("StateExecuting\n"); break;
+  case OMX_StatePause:            printf("StatePause\n"); break;
+  case OMX_StateWaitForResources: printf("StateWait\n"); break;
+  case OMX_StateInvalid:          printf("StateInvalid\n"); break;
+  default:                        printf("State unknown\n"); break;
+  }
+}
