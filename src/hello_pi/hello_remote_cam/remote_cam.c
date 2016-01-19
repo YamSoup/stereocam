@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     COMPONENT_T *camera;
     OMX_ERRORTYPE OMXstatus;
 
-    OMX_BUFFERHEADERTYPE **previewHeader;
+    OMX_BUFFERHEADERTYPE *previewHeader;
 
     //INITIALIZE CAMERA STUFF
 
@@ -128,7 +128,8 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
+    previewHeader = ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
+    ilclient_enable_port(camera, 70);
 
     //change the camera state to executing
     OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
