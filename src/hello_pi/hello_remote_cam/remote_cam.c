@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    previewHeader = ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
+    &previewHeader = ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
     ilclient_enable_port(camera, 70);
 
     //change the camera state to executing
