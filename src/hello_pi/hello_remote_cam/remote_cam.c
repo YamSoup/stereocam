@@ -128,13 +128,19 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unable to move camera component to Idle (1)");
         exit(EXIT_FAILURE);
     }
-    printState(ilclient_get_handle(camera));
+    printState(ilclient_get_handle(camera));    
+
+    //set the capture resolution
+    setCaptureRes(camera, 2592, 1944);
+
+    //set default preview resolution
+    //setPreviewRes(camera, 320, 240);
 
     //assign the buffers 
     ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
-    ilclient_enable_port(camera, 70);
+    //ilclient_enable_port(camera, 70);
     printState(ilclient_get_handle(camera));
-    
+
     //change the camera state to executing
     OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
     if (OMXstatus != OMX_ErrorNone)
@@ -144,13 +150,6 @@ int main(int argc, char *argv[])
     }
     
     printState(ilclient_get_handle(camera));
-    
-
-    //set the capture resolution
-    setCaptureRes(camera, 2592, 1944);
-
-    //set default preview resolution
-    setPreviewRes(camera, 320, 240);
 
 
     //SOCKET STUFF
