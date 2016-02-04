@@ -130,7 +130,8 @@ int main(int argc, char *argv[])
   ilclient_create_component(client,
 			    &camera,
 			    "camera",
-			    ILCLIENT_DISABLE_ALL_PORTS);
+			    ILCLIENT_DISABLE_ALL_PORTS
+			    | ILCLIENT_ENABLE_OUTPUT_BUFFERS);
   
   OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
   if (OMXstatus != OMX_ErrorNone)
@@ -164,17 +165,52 @@ int main(int argc, char *argv[])
   OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
+
   //change needed params
   port_params.format.video.nFrameWidth = 320;
   port_params.format.video.nFrameHeight = 240;
-  port_params.format.video.nStride = 0;
-  port_params.format.video.nSliceHeight = 0;
-  port_params.format.video.nBitrate = 0;
-  port_params.format.video.xFramerate = 0;
+  port_params.format.video.nStride = 320;
+  port_params.format.video.nSliceHeight = 240;
+  //port_params.format.video.nBitrate = 0;
+  port_params.format.video.xFramerate = 24;
+  port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+  port_params.format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
+  
   //set changes
   OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
+
+  //allocate buffer(s)
+
+  memset(&port_params, 0, sizeof(port_params));
+  port_params.nVersion.nVersion = OMX_VERSION;
+  port_params.nSize = sizeof(port_params);
+  port_params.nPortIndex = 70;
+  
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+  if (OMXstatus != OMX_ErrorNone)
+    printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
+
+
+  printf("nSize = %d,   nPortIndex = %d,   eDir = %d,   bEnabled = %d\n",
+	 port_params.nSize,
+	 port_params.nPortIndex,
+	 port_params.eDir, 
+	 port_params.bEnabled);
+
+	 
+  printf("buffer count = %d   buffer size = %d\n", port_params.nBufferCountActual, port_params.nBufferSize);
+  
+  printf("xFramerate = %d, nBitrate = %d", port_params.format.video.xFramerate, port_params.format.video.nBitrate);
+  
+  /*
+  OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateIdle, NULL);
+  OMX_BUFFERHEADERTYPE *finally_a_buffer;
+  char dummy[100000];
+  OMX_AllocateBuffer(camera, &finally_a_buffer, 70, &dummy, port_params.nBufferSize);
+  */
+
   
   ///////////////////////////////////////////
   ////Initialise video render////
@@ -263,10 +299,7 @@ int main(int argc, char *argv[])
   // Main Meat
   /////////////////////////////////////////////////////////////////
   
-  //setup tunnel of camera preview to renderer
-  set_tunnel(&tunnel_camera_to_render, camera, 70, video_render, 90);
-  ilclient_setup_tunnel(&tunnel_camera_to_render, 0, 0);
-  
+#ifdef NOTDEF
   // change camera component to executing
   OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
   if (OMXstatus != OMX_ErrorNone)
@@ -275,6 +308,8 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
   printState(ilclient_get_handle(camera));
+  
+  ilclient_enable_port(camera, 70);
 
   //change preview render to executing
   OMXstatus = ilclient_change_component_state(video_render, OMX_StateExecuting);
@@ -348,7 +383,7 @@ int main(int argc, char *argv[])
   printf("captureSaved\n");
   //sleep for 2 secs
   sleep(2);
-  
+#endif
 
   /////////////////////////////////////////////////////////////////
   //CLEANUP
