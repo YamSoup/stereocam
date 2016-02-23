@@ -127,6 +127,41 @@ int main(int argc, char *argv[])
   OMX_SendCommand(camera, OMX_CommandPortDisable, 72, NULL);  
   OMX_SendCommand(camera, OMX_CommandPortDisable, 73, NULL);  
 
+
+  //Configure OMX_IndexParamCameraDeviceNumber callback (to check if camera is initalize correctly)
+  OMX_CONFIG_REQUESTCALLBACKTYPE configCameraCallback;
+  configCameraCallback.nSize = sizeof(configCameraCallback);
+  configCameraCallback.nVersion.nVersion = OMX_VERSION;
+
+  configCameraCallback.nPortIndex = OMX_ALL;
+  configCameraCallback.nIndex = OMX_IndexParamCameraDeviceNumber;
+  configCameraCallback.bEnable = OMX_TRUE;
+
+  OMXstatus = OMX_SetConfig(camera, OMX_IndexConfigRequestCallback, &configCameraCallback);
+  if (OMXstatus != OMX_ErrorNone)
+    {
+      printf("Error setting camera callback");
+      exit(EXIT_FAILURE);
+    }
+
+  //set OMX CameraDeviceNumber
+  OMX_PARAM_U32TYPE deviceNumber;
+  deviceNumber.nSize = sizeof(deviceNumber);
+  deviceNumber.nVersion.nVersion = OMX_VERSION;
+
+  deviceNumber.nPortIndex = OMX_ALL;
+  deviceNumber.nU32 = 0;
+  
+  OMXstatus = OMX_SetParameter(camera, OMX_IndexParamCameraDeviceNumber, &deviceNumber);
+  if (OMXstatus != OMX_ErrorNone)
+    {
+      printf("Error setting device number");
+      exit(EXIT_FAILURE);
+    }
+
+
+
+    ////////////////
   
   OMX_PARAM_PORTDEFINITIONTYPE port_params;
   memset(&port_params, 0, sizeof(port_params));
@@ -154,11 +189,8 @@ int main(int argc, char *argv[])
   OMXstatus = OMX_SetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
+    
   
-  
-  
-  OMX_CONFIG_REQUESTCALLBACKTYPE configCameraCallback;
-
   //allocate buffer(s)
   memset(&port_params, 0, sizeof(port_params));
   port_params.nVersion.nVersion = OMX_VERSION;
@@ -177,9 +209,19 @@ int main(int argc, char *argv[])
 	 port_params.bEnabled);
 
 	 
-  printf("buffer count = %d   buffer size = %d\n", port_params.nBufferCountActual, port_params.nBufferSize);
-  printf("xFramerate = %d, nBitrate = %d\n", port_params.format.video.xFramerate, port_params.format.video.nBitrate);
+  printf("buffer count = %d   buffer size = %d\n",
+	 port_params.nBufferCountActual,
+	 port_params.nBufferSize);
+
+  printf("xFramerate = %d, nBitrate = %d\n",
+	 port_params.format.video.xFramerate,
+	 port_params.format.video.nBitrate);
   
+  while(!mContext.isCameraReady)
+    {
+      printf("Waiting for camera to be ready");
+      usleep(100 *1000);
+    }
   
   /////////////////////////////////////////////////////////////////
   //CLEANUP
