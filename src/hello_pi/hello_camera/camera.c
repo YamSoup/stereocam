@@ -38,6 +38,7 @@ OMX_ERRORTYPE onFillCameraOut ( OMX_OUT OMX_HANDLETYPE hComponent,
 OMX_ERRORTYPE onEmptyRenderIn ( OMX_IN OMX_HANDLETYPE hComponent,
 				OMX_IN OMX_PTR pAppData,
 				OMX_IN OMX_BUFFERHEADERTYPE* pBuffer);
+char *err2str(int err);
 
 void printBits(void *toPrint);
 
@@ -104,6 +105,7 @@ int main(int argc, char *argv[])
   OMX_HANDLETYPE camera = NULL;  
 
   OMX_CALLBACKTYPE callbackOMX;
+  memset(&callbackOMX, 0, sizeof(callbackOMX));
   callbackOMX.EventHandler = onOMXevent;
   callbackOMX.EmptyBufferDone = onEmptyRenderIn;
   callbackOMX.FillBufferDone = onFillCameraOut;
@@ -111,7 +113,7 @@ int main(int argc, char *argv[])
   //get handle (create component)
   OMXstatus = OMX_GetHandle(&camera,
 			    "OMX.broadcom.camera",
-			    &client,
+			    &mContext,
 			    &callbackOMX
 			    );
 
@@ -130,6 +132,7 @@ int main(int argc, char *argv[])
 
   //Configure OMX_IndexParamCameraDeviceNumber callback (to check if camera is initalize correctly)
   OMX_CONFIG_REQUESTCALLBACKTYPE configCameraCallback;
+  memset(&configCameraCallback, 0, sizeof(configCameraCallback));
   configCameraCallback.nSize = sizeof(configCameraCallback);
   configCameraCallback.nVersion.nVersion = OMX_VERSION;
 
@@ -146,6 +149,7 @@ int main(int argc, char *argv[])
 
   //set OMX CameraDeviceNumber
   OMX_PARAM_U32TYPE deviceNumber;
+  memset(&deviceNumber, 0, sizeof(deviceNumber));
   deviceNumber.nSize = sizeof(deviceNumber);
   deviceNumber.nVersion.nVersion = OMX_VERSION;
 
@@ -159,69 +163,81 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
 
-
-
-    ////////////////
+  //port parameters
   
   OMX_PARAM_PORTDEFINITIONTYPE port_params;
   memset(&port_params, 0, sizeof(port_params));
-  port_params.nVersion.nVersion = OMX_VERSION;
   port_params.nSize = sizeof(port_params);
-  port_params.nPortIndex = 70;
+  port_params.nVersion.nVersion = OMX_VERSION;
+
+  port_params.nPortIndex = 71;
+
   //prepopulate structure
   OMXstatus = OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
-
   
   //change needed params
   port_params.format.video.nFrameWidth = 320;
   port_params.format.video.nFrameHeight = 240;
   port_params.format.video.nStride = 320;
-  port_params.format.video.nSliceHeight = 240;
-  port_params.format.video.nBitrate = 0;
-  port_params.format.video.xFramerate = 24;
+  port_params.format.video.xFramerate = 24 << 16;
   port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
-  port_params.format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
   
-
   //set changes
   OMXstatus = OMX_SetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
     
   
-  //allocate buffer(s)
-  memset(&port_params, 0, sizeof(port_params));
-  port_params.nVersion.nVersion = OMX_VERSION;
-  port_params.nSize = sizeof(port_params);
-  port_params.nPortIndex = 70;
-  
-  OMXstatus = OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
-  if (OMXstatus != OMX_ErrorNone)
-    printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
-
-
-  printf("nSize = %d,   nPortIndex = %d,   eDir = %d,   bEnabled = %d\n",
-	 port_params.nSize,
-	 port_params.nPortIndex,
-	 port_params.eDir, 
-	 port_params.bEnabled);
-
-	 
-  printf("buffer count = %d   buffer size = %d\n",
-	 port_params.nBufferCountActual,
-	 port_params.nBufferSize);
-
-  printf("xFramerate = %d, nBitrate = %d\n",
-	 port_params.format.video.xFramerate,
-	 port_params.format.video.nBitrate);
-  
-  while(!mContext.isCameraReady)
+  while(mContext.isCameraReady != OMX_TRUE)
     {
-      printf("Waiting for camera to be ready");
-      usleep(100 *1000);
+      printf("Waiting for camera to be ready ...\n");
+      printf("mContext.isCameraReady = %d\n", mContext.isCameraReady);
+      usleep(100 * 1000);
     }
+
+
+  //set component to idle only initiates after buffer is allocated?
+  
+  OMXstatus = OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateIdle, NULL);
+  if (OMXstatus != OMX_ErrorNone)
+    {
+      printf("Error setting state of camera to idle.!!! Error = %s", err2str(OMXstatus));
+      exit(EXIT_FAILURE);
+    }
+  printf("OMXstatus = %s\n", err2str(OMXstatus));  
+  
+  OMX_BUFFERHEADERTYPE *cameraPrevBufferOut;
+  
+  // reuse port_params  
+  memset(&port_params, 0, sizeof(port_params));
+  port_params.nSize = sizeof(port_params);
+  port_params.nVersion.nVersion = OMX_VERSION;
+
+  port_params.nPortIndex = 71;
+
+  OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
+
+  printf("nBufferSize = %d\n\n", port_params.nBufferSize);
+  OMXstatus = OMX_AllocateBuffer(camera, &cameraPrevBufferOut, 71, &mContext, port_params.nBufferSize);
+  if (OMXstatus != OMX_ErrorNone)
+    {
+      printf("unable to allocate buffer to preview port of camera. Error = %s\n", err2str(OMXstatus));
+      exit(EXIT_FAILURE);
+    }
+
+  //wait for state change
+  OMX_STATETYPE state;
+  while (state != OMX_StateIdle)
+    {
+      usleep(10 * 1000);
+      printf(".");
+      OMX_GetState(camera, &state);
+    }
+
+
+  printState(camera);
   
   /////////////////////////////////////////////////////////////////
   //CLEANUP
@@ -295,7 +311,7 @@ OMX_ERRORTYPE onOMXevent (
   case OMX_EventParamOrConfigChanged :
     if(nData2 == OMX_IndexParamCameraDeviceNumber) {
       ((CONTEXT*)pAppData)->isCameraReady = OMX_TRUE;
-      printf("Camera device is ready.");
+      printf("Camera device is ready.\n");
     }
     break;
   default :
@@ -325,6 +341,7 @@ OMX_ERRORTYPE onEmptyRenderIn(
 
 char *err2str(int err) {
   switch (err) {
+  case OMX_ErrorNone: return "OMX_ErrorNone";
   case OMX_ErrorInsufficientResources: return "OMX_ErrorInsufficientResources";
   case OMX_ErrorUndefined: return "OMX_ErrorUndefined";
   case OMX_ErrorInvalidComponentName: return "OMX_ErrorInvalidComponentName";
