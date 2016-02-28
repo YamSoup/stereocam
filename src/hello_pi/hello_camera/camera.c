@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
   else
     printf("camera creation worked?\n");
 
-  OMX_SendCommand(camera, OMX_CommandPortDisable, 70, NULL);  
+  OMX_SendCommand(camera, OMX_CommandPortDisable, 71, NULL);  
   OMX_SendCommand(camera, OMX_CommandPortDisable, 72, NULL);  
   OMX_SendCommand(camera, OMX_CommandPortDisable, 73, NULL);  
 
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
   port_params.nSize = sizeof(port_params);
   port_params.nVersion.nVersion = OMX_VERSION;
 
-  port_params.nPortIndex = 71;
+  port_params.nPortIndex = 70;
 
   //prepopulate structure
   OMXstatus = OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
@@ -210,17 +210,19 @@ int main(int argc, char *argv[])
   
   OMX_BUFFERHEADERTYPE *cameraPrevBufferOut;
   
+  printState(camera);
+
   // reuse port_params  
   memset(&port_params, 0, sizeof(port_params));
   port_params.nSize = sizeof(port_params);
   port_params.nVersion.nVersion = OMX_VERSION;
 
-  port_params.nPortIndex = 71;
+  port_params.nPortIndex = 70;
 
   OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
 
   printf("nBufferSize = %d\n\n", port_params.nBufferSize);
-  OMXstatus = OMX_AllocateBuffer(camera, &cameraPrevBufferOut, 71, &mContext, port_params.nBufferSize);
+  OMXstatus = OMX_AllocateBuffer(camera, &cameraPrevBufferOut, 70, &mContext, port_params.nBufferSize);
   if (OMXstatus != OMX_ErrorNone)
     {
       printf("unable to allocate buffer to preview port of camera. Error = %s\n", err2str(OMXstatus));
@@ -228,6 +230,7 @@ int main(int argc, char *argv[])
     }
 
   //wait for state change
+  printf("Waiting for state change .");
   OMX_STATETYPE state;
   while (state != OMX_StateIdle)
     {
@@ -236,14 +239,57 @@ int main(int argc, char *argv[])
       OMX_GetState(camera, &state);
     }
 
+  printState(camera);
+
+  OMXstatus = OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateExecuting, NULL);
+  if (OMXstatus != OMX_ErrorNone)
+    {
+      printf("Error setting state of camera to idle.!!! Error = %s", err2str(OMXstatus));
+      exit(EXIT_FAILURE);
+    }
+  printf("OMXstatus = %s\n", err2str(OMXstatus));  
+
+  //wait for state change
+  printf("Waiting for state change .");
+  while (state != OMX_StateExecuting)
+    {
+      usleep(10 * 1000);
+      printf(".");
+      OMX_GetState(camera, &state);
+    }
 
   printState(camera);
-  
+
+  printf("Press Enter too continue: ");
+  getchar();
+  putchar('\n');
+
+  OMX_FillThisBuffer(camera, cameraPrevBufferOut);
+  while (mContext.isFilled)
+    {
+      mContext.isFilled = OMX_FALSE;
+    }
+
+  printf("nFilledLen = %d\n", cameraPrevBufferOut->nFilledLen);
+
   /////////////////////////////////////////////////////////////////
   //CLEANUP
   /////////////////////////////////////////////////////////////////
 
   //Disable components  
+
+  OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateIdle, NULL);
+
+  //wait for state change
+  printf("Waiting for state change .");
+  while (state != OMX_StateIdle)
+    {
+      OMX_GetState(camera, &state);
+      usleep(10 * 1000);
+      printf(".");
+    }
+
+  OMX_FreeHandle(camera);
 
   //check all components have been cleaned up
   OMX_Deinit();
