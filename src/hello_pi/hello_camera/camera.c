@@ -1,57 +1,30 @@
-/*
-  http://www.jvcref.com/files/PI/documentation/ilcomponents/index.html
-  https://github.com/SonienTaegi/rpi-omx-tutorial/blob/master/camera_tunnel_non.c
-  http://maemo.org/api_refs/5.0/beta/libomxil-bellagio/_o_m_x___index_8h.html 
-*/
+  /*
+    use ilclient_GetParameter, ilclient_SetParameter to setup components before executing state
+    use ilclient_GetConfig and ilclient_SetConfig to change settings while in executing state
+    
+    some settings can be changed before executing and some while executing
 
+    all 4 functions use OMX_INDEXTYPE enumeration to specify what settings are being changed
+
+    for index for each component look at
+    http://www.jvcref.com/files/PI/documentation/ilcomponents/index.html
+
+    for relevent data stuctures see
+    http://maemo.org/api_refs/5.0/beta/libomxil-bellagio/_o_m_x___index_8h.html 
+
+  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include "bcm_host.h"
 #include "ilclient.h"
 
-#include "IL/OMX_Core.h"
-#include "IL/OMX_Component.h"
-#include "IL/OMX_Video.h"
-#include "IL/OMX_Broadcom.h"
-
 
 /////////////////////////////////////////////////////////////////
-// FUNCTION PROTOTYPES
+// MACROS
 /////////////////////////////////////////////////////////////////
-
-
-OMX_ERRORTYPE onOMXevent ( OMX_IN OMX_HANDLETYPE hComponent,
-			   OMX_IN OMX_PTR pAppData,
-			   OMX_IN OMX_EVENTTYPE eEvent,
-			   OMX_IN OMX_U32 nData1,
-			   OMX_IN OMX_U32 nData2,
-			   OMX_IN OMX_PTR pEventData);
-
-OMX_ERRORTYPE onFillCameraOut ( OMX_OUT OMX_HANDLETYPE hComponent,
-				OMX_OUT OMX_PTR pAppData,
-				OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer);
-
-OMX_ERRORTYPE onEmptyRenderIn ( OMX_IN OMX_HANDLETYPE hComponent,
-				OMX_IN OMX_PTR pAppData,
-				OMX_IN OMX_BUFFERHEADERTYPE* pBuffer);
-
-void waitForStateChange(OMX_HANDLETYPE component, OMX_STATETYPE wantedState);
-
-char *err2str(int err);
-
-void printBits(void *toPrint);
-
-void printState(OMX_HANDLETYPE handle);
-
-void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current);
-
-char *err2str(int err);
-
-void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data); 
 
 // MACRO to initialize structures
 #define OMX_INIT_STRUCTURE(a) \
@@ -60,15 +33,15 @@ void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
   (a).nVersion.nVersion = OMX_VERSION;
 
 
+/////////////////////////////////////////////////////////////////
+// FUNCTION PROTOTYPES
+/////////////////////////////////////////////////////////////////
 
-// define stuct for callbacks
-typedef struct {
-  OMX_BOOL isCameraReady;
-  OMX_BOOL isFilled;
-} CONTEXT;
-//create instance of the stuct
-CONTEXT mContext;
+void printState(OMX_HANDLETYPE handle);
 
+char *err2str(int err);
+
+void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data); 
 
 /////////////////////////////////////////////////////////////////
 // MAIN
@@ -81,8 +54,17 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////
 
   ILCLIENT_T *client;
+
+  COMPONENT_T *camera = NULL;
   OMX_ERRORTYPE OMXstatus;
   uint32_t screen_width = 0, screen_height = 0;
+  OMX_BUFFERHEADERTYPE *camera_out;
+  int count;
+
+  //port param preview stucture
+  OMX_PARAM_PORTDEFINITIONTYPE port_params;
+  OMX_INIT_STRUCTURE(port_params);
+  
   
   /////////////////////////////////////////////////////////////////
   // STARTUP
@@ -90,6 +72,14 @@ int main(int argc, char *argv[])
 
   //initialise bcm_host
   bcm_host_init();
+
+  //create client
+  client = ilclient_init();
+  if(client == NULL)
+    {
+      fprintf(stderr, "unable to initalize ilclient\n");
+      exit(EXIT_FAILURE);
+    }
 
   //initalize OMX
   OMXstatus = OMX_Init();
@@ -100,6 +90,11 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
 
+  //set error callback
+  ilclient_set_error_callback(client,
+			      error_callback,
+			      NULL);
+
   //super special broadcom only function
   graphics_get_display_size(0/*framebuffer 0*/, &screen_width, &screen_height);
   printf("screen_width = %d, screen_height = %d\n", (int)screen_width, (int)screen_height);
@@ -109,155 +104,80 @@ int main(int argc, char *argv[])
   // Initalize Components
   /////////////////////////////////////////////////////////////////
   
-  ///////////////////////////////////////////
-  ////initialise camera////
-  ///////////////////////////////////////////
+  //initialise camera
+  ilclient_create_component(client,
+			    &camera,
+			    "camera",
+			    ILCLIENT_DISABLE_ALL_PORTS
+			    | ILCLIENT_ENABLE_OUTPUT_BUFFERS);
   
-  OMX_HANDLETYPE camera = NULL;  
-
-  OMX_CALLBACKTYPE callbackOMX;
-  memset(&callbackOMX, 0, sizeof(callbackOMX));
-  callbackOMX.EventHandler = onOMXevent;
-  callbackOMX.EmptyBufferDone = onEmptyRenderIn;
-  callbackOMX.FillBufferDone = onFillCameraOut;
-
-  //get handle (create component)
-  OMXstatus = OMX_GetHandle(&camera,
-			    "OMX.broadcom.camera",
-			    &mContext,
-			    &callbackOMX
-			    );
-
-  if (OMXstatus != OMX_ErrorNone)
-    {
-      printf("Error creating camera\n");
-      exit(EXIT_FAILURE);
-    }
-  else
-    printf("camera creation worked?\n");
-
-  OMX_SendCommand(camera, OMX_CommandPortDisable, 71, NULL);  
-  OMX_SendCommand(camera, OMX_CommandPortDisable, 72, NULL);  
-  OMX_SendCommand(camera, OMX_CommandPortDisable, 73, NULL);  
-
-
-  //Configure OMX_IndexParamCameraDeviceNumber callback (to check if camera is initalize correctly)
-  OMX_CONFIG_REQUESTCALLBACKTYPE configCameraCallback;
-  OMX_INIT_STRUCTURE(configCameraCallback);
-  configCameraCallback.nPortIndex = OMX_ALL;
-  configCameraCallback.nIndex = OMX_IndexParamCameraDeviceNumber;
-  configCameraCallback.bEnable = OMX_TRUE;
-
-  OMXstatus = OMX_SetConfig(camera, OMX_IndexConfigRequestCallback, &configCameraCallback);
-  if (OMXstatus != OMX_ErrorNone)
-    {
-      printf("Error setting camera callback");
-      exit(EXIT_FAILURE);
-    }
-
-  //set OMX CameraDeviceNumber
-  OMX_PARAM_U32TYPE deviceNumber;
-  OMX_INIT_STRUCTURE(deviceNumber);
-  deviceNumber.nPortIndex = OMX_ALL;
-  deviceNumber.nU32 = 0;
   
-  OMXstatus = OMX_SetParameter(camera, OMX_IndexParamCameraDeviceNumber, &deviceNumber);
-  if (OMXstatus != OMX_ErrorNone)
-    {
-      printf("Error setting device number");
-      exit(EXIT_FAILURE);
-    }
+  printState(ilclient_get_handle(camera));
 
-  //port parameters
-  OMX_PARAM_PORTDEFINITIONTYPE port_params;
-  OMX_INIT_STRUCTURE(port_params);
+  //change the preview res
   port_params.nPortIndex = 70;
-
-  //prepopulate structure
-  OMXstatus = OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
-  
-  //change needed params
+
   port_params.format.video.nFrameWidth = 320;
   port_params.format.video.nFrameHeight = 240;
   port_params.format.video.nStride = 320;
+  port_params.format.video.nSliceHeight = 240;
   port_params.format.video.xFramerate = 24 << 16;
-  port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+
+  OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+  if (OMXstatus != OMX_ErrorNone)
+    printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
+
+
   
-  //set changes
-  OMXstatus = OMX_SetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
-  if (OMXstatus != OMX_ErrorNone)
-    printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
-
-  //wait for camera to be ready
-  while(mContext.isCameraReady != OMX_TRUE)
-    {
-      printf("Waiting for camera to be ready ...\n");
-      printf("mContext.isCameraReady = %d\n", mContext.isCameraReady);
-      usleep(100 * 1000);
-    }
-
-  //set component to idle only initiates after buffer is allocated?  
-  OMXstatus = OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateIdle, NULL);
+  OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
   if (OMXstatus != OMX_ErrorNone)
     {
-      printf("Error setting state of camera to idle.!!! Error = %s", err2str(OMXstatus));
+      fprintf(stderr, "unable to move camera component to Idle (1)");
       exit(EXIT_FAILURE);
     }
-  printf("OMXstatus = %s\n", err2str(OMXstatus));  
   
-  OMX_BUFFERHEADERTYPE *cameraPrevBufferOut;
+  ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
+  ilclient_enable_port(camera, 70);
+
+  ilclient_enable_port_buffers(camera, 72, NULL, NULL, NULL);
+  ilclient_enable_port(camera, 72);
+
+  printState(ilclient_get_handle(camera));
+
+  /////////////////////////////////////////////////////////////////
+  // Main Meat
+  /////////////////////////////////////////////////////////////////
   
-  // reuse port_params  
-  OMX_INIT_STRUCTURE(port_params);
-  port_params.nPortIndex = 70;
-
-  OMX_GetParameter(camera, OMX_IndexParamPortDefinition, &port_params);
-
-  printf("nBufferSize = %d\n\n", port_params.nBufferSize);
-  OMXstatus = OMX_AllocateBuffer(camera, &cameraPrevBufferOut, 70, &mContext, port_params.nBufferSize);
+  // change camera component to executing
+  OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
   if (OMXstatus != OMX_ErrorNone)
     {
-      printf("unable to allocate buffer to preview port of camera. Error = %s\n", err2str(OMXstatus));
+      fprintf(stderr, "unable to move camera component to Executing (1)\n");
       exit(EXIT_FAILURE);
     }
+  printState(ilclient_get_handle(camera));
 
-  //wait for state change
-  waitForStateChange(camera, OMX_StateIdle);
-
-  //change camera to executing
-  OMXstatus = OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateExecuting, NULL);
-  if (OMXstatus != OMX_ErrorNone)
+  for(count = 0; count < 100; count++)
     {
-      printf("Error setting state of camera to idle.!!! Error = %s", err2str(OMXstatus));
-      exit(EXIT_FAILURE);
-    }
-  printf("OMXstatus = %s\n", err2str(OMXstatus));  
-
-  //wait for state change
-  waitForStateChange(camera, OMX_StateExecuting);
-
-  printf("Press Enter too continue: ");
-  getchar();
-  putchar('\n');
-
-  OMX_FillThisBuffer(camera, cameraPrevBufferOut);
-  while (mContext.isFilled)
-    {
-      mContext.isFilled = OMX_FALSE;
+      camera_out = ilclient_get_output_buffer(camera, 70, 1/*block*/);
+      printf("nFilledLen = %d\n", camera_out->nFilledLen);
     }
 
-  printf("nFilledLen = %d\n", cameraPrevBufferOut->nFilledLen);
+  printf("merp\n");
 
   /////////////////////////////////////////////////////////////////
   //CLEANUP
   /////////////////////////////////////////////////////////////////
 
-  //Disable components  
-  OMX_SendCommand(camera, OMX_CommandStateSet, OMX_StateIdle, NULL);
-  waitForStateChange(camera, OMX_StateIdle);
-  OMX_FreeHandle(camera);
+  OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+
+
+  //close files
+  
+  //Disable components
 
   //check all components have been cleaned up
   OMX_Deinit();
@@ -268,107 +188,9 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-/**********************************
-FUNCTIONS
-**********************************/
-
-void waitForStateChange(OMX_HANDLETYPE component, OMX_STATETYPE wantedState) {
-  OMX_STATETYPE currentState = OMX_StateMax;
-  printf("Waiting for state change .");
-  while (currentState != wantedState)
-    {
-      OMX_GetState(component, &currentState);
-      usleep(10 * 1000);
-      putchar('.');
-    }
-  printState(component);
-  putchar('\n');
-}
-
-
-/* print event (used in callbacks)*/
-void print_event(OMX_HANDLETYPE hComponent, OMX_EVENTTYPE eEvent, OMX_U32 nData1, OMX_U32 nData2) {
-  char *e;
-  switch(eEvent) {
-  case OMX_EventCmdComplete:
-    e = "CmdComplete";
-    break;
-  case OMX_EventError:
-    e = "Error";
-    break;
-  case OMX_EventMark:
-    e = "Mark";
-    break;
-  case OMX_EventPortSettingsChanged:
-    e = "PortSettingsChanged";
-    break;
-  case OMX_EventBufferFlag:
-    e = "BufferFlag";
-    break;
-  case OMX_EventResourcesAcquired:
-    e = "ResourcesAcquired";
-    break;
-  case OMX_EventComponentResumed:
-    e = "ComponentResumed";
-    break;
-  case OMX_EventDynamicResourcesAvailable:
-    e = "DynamicResourcesAvailable";
-    break;
-  case OMX_EventParamOrConfigChanged:
-    e = "ParamOrConfigChanged";
-    break;
-  default:
-    e = "Others";
-  }
-  printf("EVENT [0x%08x] @0x%08x : %s (nData1=0x%08x, nData2=0x%08x)\n", (int)eEvent, (int)hComponent, e, nData1, nData2);
-}
-
-/* Event Handler : OMX Event */
-OMX_ERRORTYPE onOMXevent (
-			  OMX_IN OMX_HANDLETYPE hComponent,
-			  OMX_IN OMX_PTR pAppData,
-			  OMX_IN OMX_EVENTTYPE eEvent,
-			  OMX_IN OMX_U32 nData1,
-			  OMX_IN OMX_U32 nData2,
-			  OMX_IN OMX_PTR pEventData) {
-
-  print_event(hComponent, eEvent, nData1, nData2);
-
-  switch(eEvent) {
-  case OMX_EventParamOrConfigChanged :
-    if(nData2 == OMX_IndexParamCameraDeviceNumber) {
-      ((CONTEXT*)pAppData)->isCameraReady = OMX_TRUE;
-      printf("Camera device is ready.\n");
-    }
-    break;
-  default :
-    break;
-  }
-  return OMX_ErrorNone;
-}
-
-/* Callback : Camera-out buffer is filled */
-OMX_ERRORTYPE onFillCameraOut (
-			       OMX_OUT OMX_HANDLETYPE hComponent,
-			       OMX_OUT OMX_PTR pAppData,
-			       OMX_OUT OMX_BUFFERHEADERTYPE* pBuffer) {
-  mContext.isFilled = OMX_TRUE;
-  return OMX_ErrorNone;
-}
-
-/* Callback : Render-in buffer is emptied */
-OMX_ERRORTYPE onEmptyRenderIn(
-			      OMX_IN OMX_HANDLETYPE hComponent,
-			      OMX_IN OMX_PTR pAppData,
-			      OMX_IN OMX_BUFFERHEADERTYPE* pBuffer) {
-
-  printf("BUFFER 0x%08x emptied\n", (int)pBuffer);
-  return OMX_ErrorNone;
-}
 
 char *err2str(int err) {
   switch (err) {
-  case OMX_ErrorNone: return "OMX_ErrorNone";
   case OMX_ErrorInsufficientResources: return "OMX_ErrorInsufficientResources";
   case OMX_ErrorUndefined: return "OMX_ErrorUndefined";
   case OMX_ErrorInvalidComponentName: return "OMX_ErrorInvalidComponentName";
@@ -410,100 +232,6 @@ char *err2str(int err) {
   }
 }
 
-void printBits(void *toPrint)
-{
-  unsigned char *b = (unsigned char*) toPrint;
-  unsigned char byte;
-  int i, j;
-  size_t size = sizeof(*toPrint);
-
-  for (i = size -1; i >= 0; i--)
-    {
-      for (j = 7; j >= 0; j--)
-	{
-	  byte = b[i] & (1<<j);
-	  byte >>= j;
-	  printf("%u", byte);
-	}
-    }
-}
-
-void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
-{
-  printf("*********************************************\n");
-  printf("nSize = %d\n", current.nSize );
-  printf("nVersion.nVersion = %d\n", current.nVersion.nVersion );
-  printf("nPortIndex = %d\n", current.nPortIndex );
-
-  putchar('\n');
-  printf("set = ");
-  printBits(&current.set);
-  putchar('\n');
-  
-  printf("OMX_DISPLAY_SET_NONE = %d\n", (current.set >> 0) & 1);
-  printf("OMX_DISPLAY_SET_NUM = %d\n", (current.set >> 1) & 1);
-  printf("OMX_DISPLAY_SET_FULLSCREEN = %d\n", (current.set >> 2) & 1);
-  printf("OMX_DISPLAY_SET_TRANSFORM = %d\n", (current.set >> 3) & 1);
-  printf("OMX_DISPLAY_SET_DEST_RECT = %d\n", (current.set >> 4) & 1);
-  printf("OMX_DISPLAY_SET_SRC_RECT = %d\n", (current.set >> 5) & 1);
-  printf("OMX_DISPLAY_SET_MODE = %d\n", (current.set >> 6) & 1);
-  printf("OMX_DISPLAY_SET_PIXEL = %d\n", (current.set >> 7) & 1);
-  printf("OMX_DISPLAY_SET_NOASPECT = %d\n", (current.set >> 8) & 1);
-  printf("OMX_DISPLAY_SET_LAYER = %d\n", (current.set >> 9) & 1);
-  printf("OMX_DISPLAY_SET_COPYPROTECT = %d\n", (current.set >> 10) & 1);
-  printf("OMX_DISPLAY_SET_ALPHA = %d\n", (current.set >> 11) & 1);
-  printf("OMX_DISPLAY_SET_DUMMY = %d\n", current.set == OMX_DISPLAY_SET_DUMMY);
-
-  putchar('\n');
-  
-  printf("num = %d\n", current.num );
-  printf("fullscreen = %d\n", current.fullscreen );
-
-  printf("transform = ");
-  switch(current.transform)
-    {
-    case 0: printf("OMX_DISPLAY_ROT0   (0)\n"); break;
-    case 1: printf("OMX_DISPLAY_MIRROR_ROT0   (1)\n"); break;
-    case 2: printf("OMX_DISPLAY_MIRROR_ROT180   (2)\n"); break;
-    case 3: printf("OMX_DISPLAY_ROT180   (3)\n"); break;
-    case 4: printf("OMX_DISPLAY_MIRROR_ROT90   (4)\n"); break;
-    case 5: printf("OMX_DISPLAY_ROT270   (5)\n"); break;
-    case 6: printf("OMX_DISPLAY_ROT90   (6)\n"); break;
-    case 7: printf("OMX_DISPLAY_MIRROR_ROT270   (7)\n"); break;
-    case 0x7FFFFFFF: printf("OMX_DISPLAY_DUMMY   (0x7FFFFFFF)\n"); break;
-    default : printf("Error: Enumeration unknown"); break;
-    }
-
-  putchar('\n');  
-
-  printf("dest_rect\n");
-  printf("\tdest_rect.x_offset = %d\n", current.dest_rect.x_offset);
-  printf("\tdest_rect.y_offset = %d\n", current.dest_rect.y_offset);
-  printf("\tdest_rext.width = %d\n", current.dest_rect.width);
-  printf("\tdest_rext.height = %d\n", current.dest_rect.height);
-
-  putchar('\n');  
-
-  printf("src_rect\n");
-  printf("\tsrc_rect.x_offset = %d\n", current.src_rect.x_offset);
-  printf("\tsrc_rect.y_offset = %d\n", current.src_rect.y_offset);
-  printf("\tsrc_rext.width = %d\n", current.src_rect.width);
-  printf("\tsrc_rext.height = %d\n", current.src_rect.height);
-  
-  putchar('\n');  
-
-  printf("noaspect = %d\n", current.noaspect );
-  printf("pixel_x = %d\n", current.pixel_x );
-  printf("pixel_y = %d\n", current.pixel_y );
-  printf("layer = %d\n", current.layer );
-  printf("copyprotect_required = %d\n", current.copyprotect_required );
-  printf("alpha = %d\n", current.alpha );
-  printf("wfc_contect_width = %d\n", current.wfc_context_width );
-  printf("wfc_context_height = %d\n", current.wfc_context_height );
-
-  printf("*********************************************\n\n");
-  
-}
 
 void printState(OMX_HANDLETYPE handle) {
   OMX_STATETYPE state;

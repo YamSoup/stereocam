@@ -197,8 +197,8 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////
   
   //setup tunnel of camera preview to renderer
-  set_tunnel(&tunnel_camera_to_render, camera, 70, video_render, 90);
-  ilclient_setup_tunnel(&tunnel_camera_to_render, 0, 0);
+  ilclient_enable_port_buffers(ilclient_get_handle(camera), 70, NULL, NULL, NULL);
+  
   
   // change camera component to executing
   OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
