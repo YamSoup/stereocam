@@ -1,4 +1,4 @@
-  /*
+   /*
     use ilclient_GetParameter, ilclient_SetParameter to setup components before executing state
     use ilclient_GetConfig and ilclient_SetConfig to change settings while in executing state
     
@@ -60,10 +60,6 @@ int main(int argc, char *argv[])
   uint32_t screen_width = 0, screen_height = 0;
   OMX_BUFFERHEADERTYPE *camera_out;
   int count;
-
-  //port param preview stucture
-  OMX_PARAM_PORTDEFINITIONTYPE port_params;
-  OMX_INIT_STRUCTURE(port_params);
   
   
   /////////////////////////////////////////////////////////////////
@@ -111,15 +107,23 @@ int main(int argc, char *argv[])
 			    ILCLIENT_DISABLE_ALL_PORTS
 			    | ILCLIENT_ENABLE_OUTPUT_BUFFERS);
   
-  
-  printState(ilclient_get_handle(camera));
+  OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+  if (OMXstatus != OMX_ErrorNone)
+    {
+      fprintf(stderr, "unable to move camera component to Idle (1)");
+      exit(EXIT_FAILURE);
+    }
 
-  //change the preview res
+  //port param preview stucture
+  OMX_PARAM_PORTDEFINITIONTYPE port_params;
+  OMX_INIT_STRUCTURE(port_params);
   port_params.nPortIndex = 70;
+
   OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
 
+  port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
   port_params.format.video.nFrameWidth = 320;
   port_params.format.video.nFrameHeight = 240;
   port_params.format.video.nStride = 320;
@@ -130,20 +134,17 @@ int main(int argc, char *argv[])
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
 
-
-  
-  OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+  //check buffer /////////////////////////////////
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
   if (OMXstatus != OMX_ErrorNone)
-    {
-      fprintf(stderr, "unable to move camera component to Idle (1)");
-      exit(EXIT_FAILURE);
-    }
-  
+    printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
+
+  printf("nBufferSize = %d\n", port_params.nBufferSize);
+
+  ////////////////////////////////////////////////  
+    
   ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
   ilclient_enable_port(camera, 70);
-
-  ilclient_enable_port_buffers(camera, 72, NULL, NULL, NULL);
-  ilclient_enable_port(camera, 72);
 
   printState(ilclient_get_handle(camera));
 
@@ -160,10 +161,15 @@ int main(int argc, char *argv[])
     }
   printState(ilclient_get_handle(camera));
 
-  for(count = 0; count < 100; count++)
+  for(count = 0; count < 10; count++)
     {
-      camera_out = ilclient_get_output_buffer(camera, 70, 1/*block*/);
+      OMX_FillThisBuffer(ilclient_get_handle(camera), camera_out);      
+      camera_out = ilclient_get_output_buffer(camera, 70, 1);
+
+
+      printf("count = %d\n", count);
       printf("nFilledLen = %d\n", camera_out->nFilledLen);
+      printf("bBuffer = %d\n", *(camera_out->pBuffer));
     }
 
   printf("merp\n");
@@ -173,7 +179,6 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////
 
   OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
-
 
   //close files
   
