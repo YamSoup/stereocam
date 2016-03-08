@@ -166,10 +166,14 @@ int main(int argc, char *argv[])
       OMX_FillThisBuffer(ilclient_get_handle(camera), camera_out);      
       camera_out = ilclient_get_output_buffer(camera, 70, 1);
 
-
-      printf("count = %d\n", count);
-      printf("nFilledLen = %d\n", camera_out->nFilledLen);
-      printf("bBuffer = %d\n", *(camera_out->pBuffer));
+      if(camera_out != NULL)
+	{
+	  printf("count = %d\n", count);
+	  printf("nFilledLen = %d\n", camera_out->nFilledLen);
+	  printf("bBuffer = %d\n", *(camera_out->pBuffer));
+	}
+      else
+	printf("NULL\n");
     }
 
   printf("merp\n");

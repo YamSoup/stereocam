@@ -75,7 +75,6 @@ enum rcam_command
 };
 
 // MAIN
-
 int main(int argc, char *argv[])
 {
     int numbytes, preview_width, preview_height;
@@ -132,9 +131,8 @@ int main(int argc, char *argv[])
 
     //set the capture resolution
     setCaptureRes(camera, 2592, 1944);
-
     //set default preview resolution
-    //setPreviewRes(camera, 320, 240);
+    setPreviewRes(camera, 320, 240);
 
     //assign the buffers 
     ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
@@ -193,8 +191,8 @@ int main(int argc, char *argv[])
         //stop preview
         //change deliver_preview to false
         deliver_preview == false;
-
     }
+
     else if (current_command == TAKE_PHOTO)
     {
         //take photo
@@ -203,16 +201,12 @@ int main(int argc, char *argv[])
     //if preview is running deliver preview
     if (deliver_preview == true)
     {
-        memset(&previewHeader, 0, sizeof(previewHeader));
-        previewHeader->nVersion.nVersion = OMX_VERSION;
-        previewHeader->nSize = sizeof(previewHeader);
-        previewHeader->nOutputPortIndex = 70;
-        //deliver preview
-        OMX_FillThisBuffer(camera, previewHeader);
-
-        //needs to check lengths to ensure all data is sent
-        //send(socket_fd, BUFFER_HEADER, sizeof(), 0)
-        //send(socker_fd, BUFFER, sizeof(), 0
+      //deliver preview
+      OMX_FillThisBuffer(ilclient_get_handle(camera), previewHeader);
+      previewHeader = ilclient_get_output_buffer(camera, 70, 1);
+      //needs to check lengths to ensure all data is sent
+      send(socket_fd, previewHeader, sizeof(previewHeader), 0);
+      send(socket_fd, previewHeader->pBuffer, sizeof(previewHeader->nAllocLen), 0);
     }
     else
     {
@@ -293,12 +287,14 @@ int getAndConnectSocket(int socket_type)
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int return_value = 0;
+  
+  printf("%d", socket_type);
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
   if(socket_type == SOCKTYPE_UDP)
     hints.ai_socktype = SOCK_DGRAM;
-  if(socket_type == SOCKTYPE_TCP)
+  else if(socket_type == SOCKTYPE_TCP)
     hints.ai_socktype = SOCK_STREAM;
   else
     {

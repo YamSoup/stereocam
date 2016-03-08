@@ -34,7 +34,7 @@
 #include <netdb.h>
 
 //defines
-#define PORT "8640"
+#define PORT "8033"
 
 /////////////////////////////////////////////////////////////////
 // FUNCTION PROTOTYPES
