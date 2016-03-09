@@ -150,10 +150,12 @@ int main(int argc, char *argv[])
 
     printState(ilclient_get_handle(camera));
 
-
     //SOCKET STUFF
-    socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
-    printf("socket success!, socket_fd = %d\n", socket_fd);
+    socket_fd = getAndConnectSocket(SOCKTYPE_UDP);
+    if (socket_fd < 0)
+      printf("socket failure\n");
+    else
+      printf("socket success!, socket_fd = %d\n", socket_fd);
 
     //recv command
     printf("waiting for command\n");
@@ -270,9 +272,6 @@ void setCaptureRes(COMPONENT_T *camera, int width, int height)
 
 }
 
-
-
-
 //set preview res
 void setPreviewRes(COMPONENT_T *camera, int width, int height)
 {
@@ -302,7 +301,6 @@ void setPreviewRes(COMPONENT_T *camera, int width, int height)
         printf("Error Setting Parameter In setPreviewRes. Error = %s\n", err2str(OMXstatus));
 
 }
-
 
 //returns a bound socket
 int getAndConnectSocket(int socket_type)
