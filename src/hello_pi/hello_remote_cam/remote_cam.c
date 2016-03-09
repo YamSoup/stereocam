@@ -121,20 +121,21 @@ int main(int argc, char *argv[])
                               "camera",
                               ILCLIENT_DISABLE_ALL_PORTS);
     printState(ilclient_get_handle(camera));
+
     OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
     if (OMXstatus != OMX_ErrorNone)
     {
         fprintf(stderr, "unable to move camera component to Idle (1)");
         exit(EXIT_FAILURE);
     }
-    printState(ilclient_get_handle(camera));    
+    printState(ilclient_get_handle(camera));
 
     //set the capture resolution
     setCaptureRes(camera, 2592, 1944);
     //set default preview resolution
     setPreviewRes(camera, 320, 240);
 
-    //assign the buffers 
+    //assign the buffers
     ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
     //ilclient_enable_port(camera, 70);
     printState(ilclient_get_handle(camera));
@@ -146,18 +147,17 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unable to move camera component to Executing (1)\n");
         exit(EXIT_FAILURE);
     }
-    
+
     printState(ilclient_get_handle(camera));
 
 
     //SOCKET STUFF
     socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
-    printf("socket_fd = %d", socket_fd);
+    printf("socket success!, socket_fd = %d\n", socket_fd);
 
     //recv command
+    printf("waiting for command\n");
     recv(socket_fd, &current_command, sizeof(current_command), 0);
-
-    //handshake?
 
     //process command
     if(current_command == NO_COMMAND)
@@ -166,11 +166,33 @@ int main(int argc, char *argv[])
     }
     else if (current_command == SET_PREVIEW_RES)
     {
+        //move comonent too idle
+        OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+        if (OMXstatus != OMX_ErrorNone)
+        {
+            fprintf(stderr, "unable to move camera component to Idle (in SET_PREVIEW_RES)\n");
+            exit(EXIT_FAILURE);
+        }
+        //disable buffers
+        ilclient_disable_port_buffers(camera, 70, NULL, NULL, NULL);
+        //resv the wanted size
         recv(socket_fd, &preview_height, sizeof(int), 0);
         recv(socket_fd, &preview_width, sizeof(int), 0);
         //check resolution is sane and alter if not (or do in setPreviewRes function)
         //use resv information to change the preview res
         setPreviewRes(camera, preview_height, preview_width);
+            //assign the buffers
+        ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
+        //ilclient_enable_port(camera, 70);
+        printState(ilclient_get_handle(camera));
+        //change the camera state to executing
+        OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
+        if (OMXstatus != OMX_ErrorNone)
+        {
+            fprintf(stderr, "unable to move camera component to Executing (in SET_PREVIEW_RES)\n");
+            exit(EXIT_FAILURE);
+        }
+
     }
     else if (current_command == START_PREVIEW)
     {
@@ -196,6 +218,7 @@ int main(int argc, char *argv[])
     else if (current_command == TAKE_PHOTO)
     {
         //take photo
+        printf("Take Photo (not implemented yet");
     }
 
     //if preview is running deliver preview
@@ -287,7 +310,7 @@ int getAndConnectSocket(int socket_type)
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int return_value = 0;
-  
+
   printf("%d", socket_type);
 
   memset(&hints, 0, sizeof hints);
