@@ -255,6 +255,9 @@ int main(int argc, char *argv[])
     }
   printState(ilclient_get_handle(video_render));
 
+  send(socket_fd, START_PREVIEW, sizeof(rcam_command), 0);
+
+
   //sleep for 2 secs
   sleep(2);
 
