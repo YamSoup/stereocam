@@ -1,7 +1,7 @@
   /*
     use ilclient_GetParameter, ilclient_SetParameter to setup components before executing state
     use ilclient_GetConfig and ilclient_SetConfig to change settings while in executing state
-    
+
     some settings can be changed before executing and some while executing
 
     all 4 functions use OMX_INDEXTYPE enumeration to specify what settings are being changed
@@ -10,7 +10,7 @@
     http://www.jvcref.com/files/PI/documentation/ilcomponents/index.html
 
     for relevent data stuctures see
-    http://maemo.org/api_refs/5.0/beta/libomxil-bellagio/_o_m_x___index_8h.html 
+    http://maemo.org/api_refs/5.0/beta/libomxil-bellagio/_o_m_x___index_8h.html
 
   */
 #include <stdio.h>
@@ -21,7 +21,6 @@
 
 #include "bcm_host.h"
 #include "ilclient.h"
-
 
 //includes needed for sockets
 #include <unistd.h>
@@ -36,6 +35,16 @@
 //defines
 #define PORT "8033"
 
+enum rcam_command
+{
+    NO_COMMAND = 0,
+    SET_PREVIEW_RES = 10,
+    SET_PREVIEW_FRAMERATE = 11,
+    START_PREVIEW = 20,
+    STOP_PREVIEW = 21,
+    TAKE_PHOTO = 30
+};
+
 /////////////////////////////////////////////////////////////////
 // FUNCTION PROTOTYPES
 /////////////////////////////////////////////////////////////////
@@ -49,7 +58,7 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current);
 
 char *err2str(int err);
 
-void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data); 
+void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
 
 /////////////////////////////////////////////////////////////////
@@ -87,16 +96,16 @@ int main(int argc, char *argv[])
   struct addrinfo hints, *results;
   struct sockaddr_storage remote_cam_addr;
   socklen_t addr_size = sizeof(remote_cam_addr);
-  int socket_status = 0, recv_size; 
-  
+  int socket_status = 0, recv_size;
+
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = AI_PASSIVE;
-  
-  // getaddrinfo 
-  socket_status = getaddrinfo(NULL, "8033", &hints, &results);
+
+  // getaddrinfo
+  socket_status = getaddrinfo(NULL, "8034", &hints, &results);
   if(socket_status != 0)
     {
       fprintf(stderr, "getaddrinfo failed, error = %s\n", gai_strerror(socket_status));
@@ -144,7 +153,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Fork failed!\n");
   else /* if pid > 0 */
     printf("in main process\n");
-  
+
 #endif
 
   /////////////////////////////////////////////////////////////////
@@ -179,12 +188,12 @@ int main(int argc, char *argv[])
   //super special broadcom only function
   graphics_get_display_size(0/*framebuffer 0*/, &screen_width, &screen_height);
   printf("screen_width = %d, screen_height = %d\n", (int)screen_width, (int)screen_height);
-  
-  
+
+
   /////////////////////////////////////////////////////////////////
   // Initalize Components
   /////////////////////////////////////////////////////////////////
-  
+
   ///////////////////////////////////////////
   ////Initialise video render////
   ///////////////////////////////////////////
@@ -200,35 +209,35 @@ int main(int argc, char *argv[])
       fprintf(stderr, "unable to move render component to Idle (1)\n");
       exit(EXIT_FAILURE);
     }
-  
+
   render_config.set = (OMX_DISPLAYSETTYPE)(OMX_DISPLAY_SET_DEST_RECT
 					   |OMX_DISPLAY_SET_FULLSCREEN
 					   |OMX_DISPLAY_SET_NOASPECT
 					   |OMX_DISPLAY_SET_MODE);
   render_config.fullscreen = OMX_FALSE;
   render_config.noaspect = OMX_FALSE;
- 
+
   render_config.dest_rect.width = screen_width/2;
   render_config.dest_rect.height = screen_height;
 
   render_config.mode = OMX_DISPLAY_MODE_LETTERBOX;
-  
+
   OMXstatus = OMX_SetConfig(ilclient_get_handle(video_render), OMX_IndexConfigDisplayRegion, &render_config);
   if(OMXstatus != OMX_ErrorNone)
-    printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));  
-  
+    printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
+
   /*
   DOES NOT WORK LEAVING AS A REMINDER
 
   memset(&render_config, 0, sizeof(render_config));
   render_config.nVersion.nVersion = OMX_VERSION;
   render_config.nSize = sizeof(render_config);
-  render_config.nPortIndex = 90; 
+  render_config.nPortIndex = 90;
   render_config.set = OMX_DISPLAY_SET_DUMMY;
-  
+
   OMXstatus = OMX_GetConfig(ilclient_get_handle(video_render), OMX_IndexConfigDisplayRegion, &render_config);
   if(OMXstatus != OMX_ErrorNone)
-    printf("Error Getting Config. Error = %s\n", err2str(OMXstatus));  
+    printf("Error Getting Config. Error = %s\n", err2str(OMXstatus));
   print_OMX_CONFIG_DISPLAYREGIONTYPE(render_config);
   */
 
@@ -245,17 +254,17 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
   printState(ilclient_get_handle(video_render));
-  
+
   //sleep for 2 secs
   sleep(2);
-  
+
 
   /////////////////////////////////////////////////////////////////
   //CLEANUP
   /////////////////////////////////////////////////////////////////
 
   //Disable components
-  
+
 
   //check all components have been cleaned up
   OMX_Deinit();
@@ -339,7 +348,7 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
   printf("set = ");
   printBits(&current.set);
   putchar('\n');
-  
+
   printf("OMX_DISPLAY_SET_NONE = %d\n", (current.set >> 0) & 1);
   printf("OMX_DISPLAY_SET_NUM = %d\n", (current.set >> 1) & 1);
   printf("OMX_DISPLAY_SET_FULLSCREEN = %d\n", (current.set >> 2) & 1);
@@ -355,7 +364,7 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
   printf("OMX_DISPLAY_SET_DUMMY = %d\n", current.set == OMX_DISPLAY_SET_DUMMY);
 
   putchar('\n');
-  
+
   printf("num = %d\n", current.num );
   printf("fullscreen = %d\n", current.fullscreen );
 
@@ -374,7 +383,7 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
     default : printf("Error: Enumeration unknown"); break;
     }
 
-  putchar('\n');  
+  putchar('\n');
 
   printf("dest_rect\n");
   printf("\tdest_rect.x_offset = %d\n", current.dest_rect.x_offset);
@@ -382,15 +391,15 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
   printf("\tdest_rext.width = %d\n", current.dest_rect.width);
   printf("\tdest_rext.height = %d\n", current.dest_rect.height);
 
-  putchar('\n');  
+  putchar('\n');
 
   printf("src_rect\n");
   printf("\tsrc_rect.x_offset = %d\n", current.src_rect.x_offset);
   printf("\tsrc_rect.y_offset = %d\n", current.src_rect.y_offset);
   printf("\tsrc_rext.width = %d\n", current.src_rect.width);
   printf("\tsrc_rext.height = %d\n", current.src_rect.height);
-  
-  putchar('\n');  
+
+  putchar('\n');
 
   printf("noaspect = %d\n", current.noaspect );
   printf("pixel_x = %d\n", current.pixel_x );
@@ -402,7 +411,7 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
   printf("wfc_context_height = %d\n", current.wfc_context_height );
 
   printf("*********************************************\n\n");
-  
+
 }
 
 void printState(OMX_HANDLETYPE handle) {
