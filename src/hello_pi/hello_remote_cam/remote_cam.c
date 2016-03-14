@@ -40,14 +40,29 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 #include "ilclient.h"
 
 #define IP_ADD "127.0.0.1"
-#define SERV_PORT "8033"
+#define SERV_PORT "8039"
 
 #define SOCKTYPE_TCP 1
 #define SOCKTYPE_UDP 2
 
+//possibly put this enum in a header file to easily include in other programs
+enum rcam_command
+{
+    NO_COMMAND = 0,
+    SET_PREVIEW_RES = 10,
+    SET_PREVIEW_FRAMERATE = 11,
+    START_PREVIEW = 20,
+    STOP_PREVIEW = 21,
+    TAKE_PHOTO = 30
+};
+
 ////////////////////////////////////////////////////////////////
 // FUNCTION PROTOTYPES
 ////////////////////////////////////////////////////////////////
+
+void write_all(int socket, const void *buf, size_t num_bytes);
+
+void read_all(int socket, const void *buf, size_t num_bytes);
 
 int getAndConnectSocket(int socket_type);
 
@@ -63,21 +78,11 @@ char *err2str(int err);
 
 void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
-//possibly put this enum in a header file to easily include in other programs
-enum rcam_command
-{
-    NO_COMMAND = 0,
-    SET_PREVIEW_RES = 10,
-    SET_PREVIEW_FRAMERATE = 11,
-    START_PREVIEW = 20,
-    STOP_PREVIEW = 21,
-    TAKE_PHOTO = 30
-};
 
 // MAIN
 int main(int argc, char *argv[])
 {
-    int numbytes, preview_width, preview_height;
+    int numbytes, preview_width, preview_height, count = 0;
     int socket_fd;
     enum rcam_command current_command;
     bool deliver_preview = false;
@@ -119,7 +124,8 @@ int main(int argc, char *argv[])
     ilclient_create_component(client,
                               &camera,
                               "camera",
-                              ILCLIENT_DISABLE_ALL_PORTS);
+                              ILCLIENT_DISABLE_ALL_PORTS
+			      | ILCLIENT_ENABLE_OUTPUT_BUFFERS);
     printState(ilclient_get_handle(camera));
 
     OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
@@ -131,7 +137,7 @@ int main(int argc, char *argv[])
     printState(ilclient_get_handle(camera));
 
     //set the capture resolution
-    setCaptureRes(camera, 2592, 1944);
+    //setCaptureRes(camera, 2592, 1944);
     //set default preview resolution
     setPreviewRes(camera, 320, 240);
 
@@ -151,92 +157,86 @@ int main(int argc, char *argv[])
     printState(ilclient_get_handle(camera));
 
     //SOCKET STUFF
-    socket_fd = getAndConnectSocket(SOCKTYPE_UDP);
+    socket_fd = getAndConnectSocket(SOCKTYPE_TCP);
     if (socket_fd < 0)
-      printf("socket failure\n");
+      {
+	printf("socket failure\n");
+	exit(EXIT_FAILURE);
+      }
     else
       printf("socket success!, socket_fd = %d\n", socket_fd);
 
-    //recv command
-    printf("waiting for command\n");
-    recv(socket_fd, &current_command, sizeof(current_command), 0);
 
-    //process command
-    if(current_command == NO_COMMAND)
-    {
-        //do nothing
-    }
-    else if (current_command == SET_PREVIEW_RES)
-    {
-        //move comonent too idle
-        OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
-        if (OMXstatus != OMX_ErrorNone)
-        {
-            fprintf(stderr, "unable to move camera component to Idle (in SET_PREVIEW_RES)\n");
-            exit(EXIT_FAILURE);
-        }
-        //disable buffers
-        ilclient_disable_port_buffers(camera, 70, NULL, NULL, NULL);
-        //resv the wanted size
-        recv(socket_fd, &preview_height, sizeof(int), 0);
-        recv(socket_fd, &preview_width, sizeof(int), 0);
-        //check resolution is sane and alter if not (or do in setPreviewRes function)
-        //use resv information to change the preview res
-        setPreviewRes(camera, preview_height, preview_width);
-            //assign the buffers
-        ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
-        //ilclient_enable_port(camera, 70);
-        printState(ilclient_get_handle(camera));
-        //change the camera state to executing
-        OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
-        if (OMXstatus != OMX_ErrorNone)
-        {
-            fprintf(stderr, "unable to move camera component to Executing (in SET_PREVIEW_RES)\n");
-            exit(EXIT_FAILURE);
-        }
+    ////////////////////////////////////////////////////////////
+    // SEND AND RECV
+    ////////////////////////////////////////////////////////////
 
-    }
-    else if (current_command == START_PREVIEW)
-    {
-        //check if preview is already running
-        if (deliver_preview == true)
-        {
-            fprintf(stderr, "Preview is already running");
-            //possibly send error back to other app
-        }
-        else
-        {
-            //change deliver_preview to true
-            deliver_preview = true;
-        }
-    }
-    else if (current_command == STOP_PREVIEW)
-    {
-        //stop preview
-        //change deliver_preview to false
-        deliver_preview == false;
-    }
+    char handshake_r[4];
+    long int num_bytes = 0;
+    //handshake
+    printf("sending handshake\n");
+    write(socket_fd, "handshake\0", sizeof(char) * 11);
+    printf("handshake sent\n");
+    read(socket_fd, &handshake_r, sizeof(char)*4);
+    printf("handshake = %s\n\n", handshake_r);
 
-    else if (current_command == TAKE_PHOTO)
-    {
-        //take photo
-        printf("Take Photo (not implemented yet");
-    }
 
-    //if preview is running deliver preview
-    if (deliver_preview == true)
+
+    while(count < 100)
     {
-      //deliver preview
-      OMX_FillThisBuffer(ilclient_get_handle(camera), previewHeader);
-      previewHeader = ilclient_get_output_buffer(camera, 70, 1);
-      //needs to check lengths to ensure all data is sent
-      send(socket_fd, previewHeader, sizeof(previewHeader), 0);
-      send(socket_fd, previewHeader->pBuffer, sizeof(previewHeader->nAllocLen), 0);
-    }
-    else
+      count++;
+      printf("count = %d\n", count);
+
+      //get command
+      printf("waiting for command\n");
+      read(socket_fd, &current_command, sizeof(current_command));
+      printf("got command = %d\n", (int)current_command);      
+
+      switch(current_command)
+	{
+	case NO_COMMAND: break;
+	case START_PREVIEW: deliver_preview = true; break;
+	case STOP_PREVIEW: deliver_preview = false; break;
+	}
+
+      //if preview is running deliver preview
+      if (deliver_preview == true)
+	{
+	  printState(ilclient_get_handle(camera));
+	  //deliver preview
+	  OMXstatus = OMX_FillThisBuffer(ilclient_get_handle(camera), previewHeader);
+	  if(OMXstatus != OMX_ErrorNone)
+	    fprintf(stderr, "Error filling buffer, error = %s", err2str(OMXstatus));
+	  previewHeader = ilclient_get_output_buffer(camera, 70, 1);
+
+	  //needs to check lengths to ensure all data is sent
+	  printf("sending bufferheader... ");
+	  num_bytes = write(socket_fd, previewHeader, sizeof(OMX_BUFFERHEADERTYPE));
+	  printf("bufferheadertype sent, %ld bytes \n", num_bytes);
+
+	  printf("nAllocLen = %d", previewHeader->nAllocLen);
+	  printf("sending buffer ... ");
+	  num_bytes = write(socket_fd, previewHeader->pBuffer, sizeof(previewHeader->nAllocLen));
+	  while (num_bytes < previewHeader->nAllocLen)
+	    num_bytes += write(socket_fd, previewHeader + num_bytes, previewHeader->nAllocLen - num_bytes);
+	  
+	  printf("buffer sent, %ld bytes \n", num_bytes);
+	}
+      else
+	{
+	  ;//do nothing;
+	}
+    }//end of while loop
+
+
+    //make camera idle again
+    OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+    if (OMXstatus != OMX_ErrorNone)
     {
-        //do nothing
+        fprintf(stderr, "unable to move camera component to Idle (1)");
+        exit(EXIT_FAILURE);
     }
+    printState(ilclient_get_handle(camera));
 
     return 0;
 }
@@ -245,6 +245,22 @@ int main(int argc, char *argv[])
 /////////////////////////////////////////////////////////
 // FUNCTIONS
 /////////////////////////////////////////////////////////
+
+//write all (to ensure full buffer is sent
+
+void write_all(int socket, const void *buf, size_t num_bytes)
+{
+  size_t current_writen = 0;
+  while (current_writen < num_bytes)
+    current_writen += write(socket, &buf + current_writen, num_bytes - current_writen);
+}
+
+void read_all(int socket, const void *buf, size_t num_bytes)
+{
+  size_t current_read = 0;
+  while (current_read < num_bytes)
+    current_read += read(socket, &buf + current_read, num_bytes - current_read);
+}
 
 //set capture res
 void setCaptureRes(COMPONENT_T *camera, int width, int height)
@@ -289,12 +305,12 @@ void setPreviewRes(COMPONENT_T *camera, int width, int height)
     if (OMXstatus != OMX_ErrorNone)
         printf("Error Getting Parameter In setPreviewRes. Error = %s\n", err2str(OMXstatus));
     //change needed params
+    port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
     port_params.format.video.nFrameWidth = width;
     port_params.format.video.nFrameHeight = height;
-    port_params.format.video.nStride = 0;
-    port_params.format.video.nSliceHeight = 0;
-    port_params.format.video.nBitrate = 0;
-    port_params.format.video.xFramerate = 0;
+    port_params.format.video.nStride = width;
+    //port_params.format.video.nSliceHeight = height;
+    port_params.format.video.xFramerate = 24 << 16;
     //set changes
     OMXstatus = OMX_SetConfig(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
     if (OMXstatus != OMX_ErrorNone)
@@ -453,3 +469,71 @@ void printState(OMX_HANDLETYPE handle) {
   default:                        printf("State unknown\n"); break;
   }
 }
+
+/* OLD PROCESS COMMAND DELETE WHEN NEW ONE WRITEN
+
+
+      //process command
+      if(current_command == NO_COMMAND)
+	{
+	  ;//do nothing
+	}
+      else if (current_command == SET_PREVIEW_RES)
+	{
+	  //move comonent too idle
+	  OMXstatus = ilclient_change_component_state(camera, OMX_StateIdle);
+	  if (OMXstatus != OMX_ErrorNone)
+	    {
+	      fprintf(stderr, "unable to move camera component to Idle (in SET_PREVIEW_RES)\n");
+	      exit(EXIT_FAILURE);
+	    }
+	  //disable buffers
+	  ilclient_disable_port_buffers(camera, 70, NULL, NULL, NULL);
+	  //resv the wanted size
+	  recv(socket_fd, &preview_height, sizeof(int), 0);
+	  recv(socket_fd, &preview_width, sizeof(int), 0);
+	  //check resolution is sane and alter if not (or do in setPreviewRes function)
+	  //use resv information to change the preview res
+	  setPreviewRes(camera, preview_height, preview_width);
+	  //assign the buffers
+	  ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
+	  //ilclient_enable_port(camera, 70);
+	  printState(ilclient_get_handle(camera));
+	  //change the camera state to executing
+	  OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
+	  if (OMXstatus != OMX_ErrorNone)
+	    {
+	      fprintf(stderr, "unable to move camera component to Executing (in SET_PREVIEW_RES)\n");
+	      exit(EXIT_FAILURE);
+	    }
+	  
+	}
+      else if (current_command == START_PREVIEW)
+	    {
+	      //check if preview is already running
+	      if (deliver_preview == true)
+		{
+		  fprintf(stderr, "Preview is already running");
+		  //possibly send error back to other app
+		}
+	      else
+		{
+		  //change deliver_preview to true
+		  deliver_preview = true;
+		}
+	    }
+      else if (current_command == STOP_PREVIEW)
+	    {
+	      //stop preview
+	      //change deliver_preview to false
+	      deliver_preview == false;
+	    }
+      else if (current_command == TAKE_PHOTO)
+	    {
+	      //take photo
+	      printf("Take Photo (not implemented yet");
+	    }
+      else
+	printf("unknown command");
+      //end of procces command
+*/

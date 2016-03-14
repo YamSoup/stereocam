@@ -25,7 +25,6 @@
 //includes needed for sockets
 #include <unistd.h>
 #include <errno.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -33,7 +32,7 @@
 #include <netdb.h>
 
 //defines
-#define PORT "8033"
+#define PORT "8039"
 
 enum rcam_command
 {
@@ -49,6 +48,9 @@ enum rcam_command
 // FUNCTION PROTOTYPES
 /////////////////////////////////////////////////////////////////
 
+void write_all(int socket, const void *buf, size_t num_bytes);
+
+void read_all(int socket, const void *buf, size_t num_bytes);
 
 void printBits(void *toPrint);
 
@@ -91,26 +93,27 @@ int main(int argc, char *argv[])
   // SOCKET STUFF
   /////////////////////////////////////////////////////////////////
 
-  //stuctures and vars and stuff
-  int socket_fd;
+  //socket stuctures and vars and stuff
+  int socket_fd, new_sock;
   struct addrinfo hints, *results;
   struct sockaddr_storage remote_cam_addr;
   socklen_t addr_size = sizeof(remote_cam_addr);
-  int socket_status = 0, recv_size;
-
+  int socket_status = 0, result;
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
   // getaddrinfo
-  socket_status = getaddrinfo(NULL, "8034", &hints, &results);
+  socket_status = getaddrinfo(NULL, PORT, &hints, &results);
   if(socket_status != 0)
     {
       fprintf(stderr, "getaddrinfo failed, error = %s\n", gai_strerror(socket_status));
       exit(EXIT_FAILURE);
     }
+
+  printf("results->ai_protocol = %d", results->ai_protocol);
 
   // socket
   socket_fd = socket(results->ai_family, results->ai_socktype, results->ai_protocol);
@@ -130,14 +133,73 @@ int main(int argc, char *argv[])
 
   freeaddrinfo(results);
 
+  //listen
+  if (listen(socket_fd, 10) == -1)
+    {
+      fprintf(stderr, "listen failed");
+      exit(EXIT_FAILURE);
+    }
+
+  //accept
+  new_sock = accept(socket_fd, (struct sockaddr *) &remote_cam_addr, &addr_size); 
+  if(new_sock < 0)
+    printf("error accepting socket, error = %s", strerror(errno));
+
   printf("socket = %d\n", socket_fd);
+  printf("new_sock = %d", new_sock);
 
-  numbytes = recv(socket_fd, &char_buffer, 11, 0);
-  if (numbytes != 11)
-    fprintf(stderr, "did not recv whole msg");
-  else
-    printf("%s", char_buffer);
+  ////////////////////////////////////////////////////////////
+  // SEND AND RECV
+  ////////////////////////////////////////////////////////////
+  
+  //handshake
+  printf("waiting to recive handshake ... \n");
+  read(new_sock, char_buffer, 11);
+  printf("handshake result = %s", char_buffer);
+  write(new_sock, "got\0", sizeof(char)*4);
+  
 
+  int count = 0;
+  long int num_bytes = 0;
+  enum rcam_command current_command = START_PREVIEW; 
+  void *buffer;
+  buffer = malloc(10000 * sizeof(char));
+  if (buffer == NULL)
+    printf("buffer == NULL");
+
+  printf("current_command = %d\n", current_command);
+
+  printf("sending command ...");
+  write(new_sock, &current_command, sizeof(current_command));
+  printf("sent command\n");
+  
+  current_command = NO_COMMAND;
+
+  while(count < 100)
+    {
+      count++;
+      printf("waiting to recv bufferheader... ");
+      num_bytes = read(new_sock, &grabbed, sizeof(OMX_BUFFERHEADERTYPE));
+      printf("bufferheader recived %ld bytes\n", num_bytes);
+      
+      printf("waiting to recv buffer of size %d... ", grabbed.nAllocLen);
+      num_bytes = read(new_sock, &buffer, grabbed.nAllocLen);
+      while (num_bytes < grabbed.nAllocLen)
+	{
+	  printf("errno = %s", strerror(errno));
+	  num_bytes += read(new_sock, &buffer, grabbed.nAllocLen - num_bytes);
+	  printf("nAllocLen = %d, num_bytes = %ld\n", grabbed.nAllocLen, num_bytes);	  
+	}
+      printf("buffer recived, recived %ld bytes\n", num_bytes);
+      
+      //fix the bufferheader 
+      grabbed.pBuffer = (OMX_U8*)&buffer;
+      //send no command
+      write(new_sock, &current_command, sizeof(current_command));
+    }
+      
+  
+  putchar('\n');
 
   /////////////////////////////////////////////////////////////////
   // FORK
@@ -255,8 +317,8 @@ int main(int argc, char *argv[])
     }
   printState(ilclient_get_handle(video_render));
 
-  send(socket_fd, START_PREVIEW, sizeof(rcam_command), 0);
-
+  //send(socket_fd, START_PREVIEW, sizeof(rcam_command), 0);
+  free(buffer);
 
   //sleep for 2 secs
   sleep(2);
@@ -276,6 +338,22 @@ int main(int argc, char *argv[])
   ilclient_destroy(client);
 
   return 0;
+}
+
+//write all (to ensure full buffer is sent
+
+void write_all(int socket, const void *buf, size_t num_bytes)
+{
+  size_t current_writen = 0;
+  while (current_writen < num_bytes)
+    current_writen += write(socket, &buf + current_writen, num_bytes - current_writen);
+}
+
+void read_all(int socket, const void *buf, size_t num_bytes)
+{
+  size_t current_read = 0;
+  while (current_read < num_bytes)
+    current_read += read(socket, &buf + current_read, num_bytes - current_read);
 }
 
 
