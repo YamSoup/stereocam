@@ -193,6 +193,8 @@ int main(int argc, char *argv[])
       
       //fix the bufferheader 
       grabbed.pBuffer = (OMX_U8*)&buffer;
+
+      
       //send no command
       write(new_sock, &current_command, sizeof(current_command));
     }
