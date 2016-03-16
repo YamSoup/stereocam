@@ -39,7 +39,7 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 #include "bcm_host.h"
 #include "ilclient.h"
 
-#define IP_ADD "127.0.0.1"
+#define IP_ADD "192.168.0.13"
 #define SERV_PORT "8039"
 
 #define SOCKTYPE_TCP 1
