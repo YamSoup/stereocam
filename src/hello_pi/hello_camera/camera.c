@@ -43,6 +43,7 @@ char *err2str(int err);
 
 void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data); 
 
+
 /////////////////////////////////////////////////////////////////
 // MAIN
 /////////////////////////////////////////////////////////////////
@@ -116,37 +117,38 @@ int main(int argc, char *argv[])
     }
 
   //port param preview stucture
-  OMX_PARAM_PORTDEFINITIONTYPE port_params;
-  OMX_INIT_STRUCTURE(port_params);
-  port_params.nPortIndex = 70;
+  OMX_PARAM_PORTDEFINITIONTYPE camera_params;
+  OMX_INIT_STRUCTURE(camera_params);
+  camera_params.nPortIndex = 70;
 
-  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &camera_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
 
-  port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
-  port_params.format.video.nFrameWidth = 320;
-  port_params.format.video.nFrameHeight = 240;
-  port_params.format.video.nStride = 320;
-  port_params.format.video.nSliceHeight = 240;
-  port_params.format.video.xFramerate = 24 << 16;
+  camera_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+  camera_params.format.video.nFrameWidth = 320;
+  camera_params.format.video.nFrameHeight = 240;
+  camera_params.format.video.nStride = 320;
+  camera_params.format.video.nSliceHeight = 240;
+  camera_params.format.video.xFramerate = 24 << 16;
 
-  OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+  OMXstatus = OMX_SetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &camera_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
 
-  //check buffer /////////////////////////////////
-  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &port_params);
+  //check buffer 
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(camera), OMX_IndexParamPortDefinition, &camera_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter. Error = %s\n", err2str(OMXstatus));
 
-  printf("nBufferSize = %d\n", port_params.nBufferSize);
+  printf("camera nBufferSize = %d\n", camera_params.nBufferSize);
+  printf("camera nBufferCountMin = %d, nBufferCountActual = %d\n", camera_params.nBufferCountMin, camera_params.nBufferCountActual);
 
-  ////////////////////////////////////////////////  
-    
+  printf("enable camera output port ");
   ilclient_enable_port_buffers(camera, 70, NULL, NULL, NULL);
   ilclient_enable_port(camera, 70);
 
+  printf("Camera state = ");
   printState(ilclient_get_handle(camera));
 
 
@@ -167,30 +169,39 @@ int main(int argc, char *argv[])
     }
   printState(ilclient_get_handle(video_render));
 
-  //reuse port params
-  OMX_INIT_STRUCTURE(port_params);
-  port_params.nPortIndex = 90;
+  //render param structure
+  OMX_PARAM_PORTDEFINITIONTYPE render_params;
+  OMX_INIT_STRUCTURE(render_params);
+  render_params.nPortIndex = 90;
   
-  OMXstatus = OMX_GetParameter(ilclient_get_handle(video_render), OMX_IndexParamPortDefinition, &port_params);
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(video_render), OMX_IndexParamPortDefinition, &render_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Getting Parameter(in video render). Error = %s\n", err2str(OMXstatus));
 
-  port_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
-  port_params.format.video.nFrameWidth = 320;
-  port_params.format.video.nFrameHeight = 240;
-  port_params.format.video.nStride = 320;
-  port_params.format.video.nSliceHeight = 240;
-  port_params.format.video.xFramerate = 24 << 16;
+  render_params.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;
+  render_params.format.video.nFrameWidth = 320;
+  render_params.format.video.nFrameHeight = 240;
+  render_params.format.video.nStride = 320;
+  render_params.format.video.nSliceHeight = 240;
+  render_params.format.video.xFramerate = 24 << 16;
 
-  OMXstatus = OMX_SetParameter(ilclient_get_handle(video_render), OMX_IndexParamPortDefinition, &port_params);
+  OMXstatus = OMX_SetParameter(ilclient_get_handle(video_render), OMX_IndexParamPortDefinition, &render_params);
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter(in video render). Error = %s\n", err2str(OMXstatus));
-  
+
+
+  //check buffers
+  OMXstatus = OMX_GetParameter(ilclient_get_handle(video_render), OMX_IndexParamPortDefinition, &render_params);
+  if (OMXstatus != OMX_ErrorNone)
+    printf("Error Getting Parameter(in video render). Error = %s\n", err2str(OMXstatus));
+
+  printf("nBufferCountMin = %d, nBufferCountActual = %d\n", render_params.nBufferCountMin,
+	 render_params.nBufferCountActual);
+
   printf("enable video_render input port ");
   ilclient_enable_port_buffers(video_render, 90, NULL, NULL, NULL);
   ilclient_enable_port(video_render, 90);
   
-
 
   /////////////////////////////////////////////////////////////////
   // Main Meat
@@ -200,37 +211,50 @@ int main(int argc, char *argv[])
   OMXstatus = ilclient_change_component_state(camera, OMX_StateExecuting);
   if (OMXstatus != OMX_ErrorNone)
     {
-      fprintf(stderr, "unable to move camera component to Executing (1)\n");
+      fprintf(stderr, "unable to move camera component to Executing (5)\n");
       exit(EXIT_FAILURE);
     }
-  printState(ilclient_get_handle(camera));
+  printf("camera is "); printState(ilclient_get_handle(camera));
 
-  for(count = 0; count < 10; count++)
+  // change render component to executing
+  OMXstatus = ilclient_change_component_state(video_render, OMX_StateExecuting);
+  if (OMXstatus != OMX_ErrorNone)
     {
+      fprintf(stderr, "unable to move video_render component to Executing (5)\n");
+      exit(EXIT_FAILURE);
+    }
+  printf("video_render is "); printState(ilclient_get_handle(video_render));
+
+
+
+
+  for(count = 0; count < 100; count++)
+    {
+      //get output buffer from camera
       OMX_FillThisBuffer(ilclient_get_handle(camera), camera_out);      
       camera_out = ilclient_get_output_buffer(camera, 70, 1);
-
-      
-      video_in = ilclient_get_input_buffer(video_render, 90, 0);
-
-      video_in->pBuffer = camera_out->pBuffer;
-      video_in->nAllocLen = camera_out->nAllocLen;
-      video_in->nFilledLen = camera_out->nFilledLen;
-      video_in->nOffset = camera_out->nOffset;
-
-      OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_in);
 
       if(camera_out != NULL)
 	{
 	  printf("count = %d\n", count);
 	  printf("nFilledLen = %d\n", camera_out->nFilledLen);
-	  printf("bBuffer = %d\n", *(camera_out->pBuffer));
+	  printf("camera_out pBuffer address  = %#010x\n", (unsigned int)camera_out->pBuffer);
 	}
       else
 	printf("NULL\n");
+      
+      //get input buffer from renderer
+      video_in = ilclient_get_input_buffer(video_render, 90, 1);
+      printf("video_in pBuffer address = %#10x\n", (unsigned int)video_in->pBuffer);
+
+      //copy the buffer information from 1 buffer to the other
+      memcpy(video_in->pBuffer, camera_out->pBuffer, render_params.nBufferSize);
+
+      OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_in);
+      
     }
 
-  printf("merp\n");
+  printf("end\n");
 
   /////////////////////////////////////////////////////////////////
   //CLEANUP
@@ -321,3 +345,59 @@ void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data)
 {
   fprintf(stderr, "OMX error %s\n", err2str(data));
 }
+
+
+/*
+int use_buffer(COMPONENT_T *renderComponent, 
+	       OMX_BUFFERHEADERTYPE *buff_header) {
+  int ret;
+  OMX_PARAM_PORTDEFINITIONTYPE portdef;
+
+    ppRenderInputBufferHeader =
+      (OMX_BUFFERHEADERTYPE **) malloc(sizeof(void) *
+				       3);
+
+    OMX_SendCommand(ilclient_get_handle(renderComponent), 
+		    OMX_CommandPortEnable, 90, NULL);
+    
+    ilclient_wait_for_event(renderComponent,
+			    OMX_EventCmdComplete,
+			    OMX_CommandPortEnable, 1,
+			    90, 1, 0,
+			    5000);
+    
+    printState(ilclient_get_handle(renderComponent));
+
+    ret = OMX_UseBuffer(ilclient_get_handle(renderComponent),
+			&ppRenderInputBufferHeader[0],
+			90,
+			NULL,
+			nBufferSize,
+			buff_header->pBuffer);
+    if (ret != OMX_ErrorNone) {
+      fprintf(stderr, "Eror sharing buffer %s\n", err2str(ret));
+      return ret;
+    } else {
+      printf("Sharing buffer ok\n");
+    }
+
+    ppRenderInputBufferHeader[0]->nAllocLen =
+      buff_header->nAllocLen;
+
+    int n;
+    for (n = 1; n < 3; n++) {
+      printState(ilclient_get_handle(renderComponent));
+      ret = OMX_UseBuffer(ilclient_get_handle(renderComponent),
+			  &ppRenderInputBufferHeader[n],
+			  90,
+			  NULL,
+			  0,
+			  NULL);
+      if (ret != OMX_ErrorNone) {
+	fprintf(stderr, "Eror sharing null buffer %s\n", err2str(ret));
+	return ret;
+      }
+    }
+
+}
+*/
