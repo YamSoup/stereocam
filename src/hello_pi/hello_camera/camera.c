@@ -249,7 +249,9 @@ int main(int argc, char *argv[])
 
       //copy the buffer information from 1 buffer to the other
       memcpy(video_in->pBuffer, camera_out->pBuffer, render_params.nBufferSize);
-
+      //changed the filled len
+      video_in->nFilledLen = render_params.nBufferSize;
+      
       OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_in);
       
     }

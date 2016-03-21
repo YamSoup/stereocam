@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////
   // VARIABLES
   /////////////////////////////////////////////////////////////////
-
+  printf("sterocam started\n");
   ILCLIENT_T *client;
 
   COMPONENT_T *video_render = NULL;
@@ -92,7 +92,8 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////
   // SOCKET STUFF
   /////////////////////////////////////////////////////////////////
-
+  printf("start of socket stuff");
+  
   //socket stuctures and vars and stuff
   int socket_fd, new_sock;
   struct addrinfo hints, *results;
@@ -133,6 +134,8 @@ int main(int argc, char *argv[])
 
   freeaddrinfo(results);
 
+  printf("waiting for remotecam to connect");
+  
   //listen
   if (listen(socket_fd, 10) == -1)
     {
@@ -147,59 +150,6 @@ int main(int argc, char *argv[])
 
   printf("socket = %d\n", socket_fd);
   printf("new_sock = %d", new_sock);
-
-  ////////////////////////////////////////////////////////////
-  // SEND AND RECV
-  ////////////////////////////////////////////////////////////
-  
-  //handshake
-  printf("waiting to recive handshake ... \n");
-  read(new_sock, char_buffer, 11);
-  printf("handshake result = %s", char_buffer);
-  write(new_sock, "got\0", sizeof(char)*4);
-  
-
-  int count = 0;
-  long int num_bytes = 0;
-  enum rcam_command current_command = START_PREVIEW; 
-  void *buffer;
-  buffer = malloc(10000 * sizeof(char));
-  if (buffer == NULL)
-    printf("buffer == NULL");
-
-  printf("current_command = %d\n", current_command);
-
-  printf("sending command ...");
-  write(new_sock, &current_command, sizeof(current_command));
-  printf("sent command\n");
-  
-  current_command = NO_COMMAND;
-
-  while(count < 100)
-    {
-      count++;
-      printf("waiting to recv bufferheader... ");
-      num_bytes = read(new_sock, &grabbed, sizeof(OMX_BUFFERHEADERTYPE));
-      printf("bufferheader recived %ld bytes\n", num_bytes);
-      
-      printf("waiting to recv buffer of size %d... ", grabbed.nAllocLen);
-      num_bytes = read(new_sock, buffer, grabbed.nAllocLen);
-      while (num_bytes < grabbed.nAllocLen)
-	{
-	  num_bytes += read(new_sock, buffer, grabbed.nAllocLen - num_bytes);
-	  printf("nAllocLen = %d, num_bytes = %ld\n", grabbed.nAllocLen, num_bytes);	  
-	}
-      printf("buffer recived, recived %ld bytes\n", num_bytes);
-      
-      //fix the bufferheader 
-      grabbed.pBuffer = (OMX_U8*)&buffer;
-      //send no command
-      write(new_sock, &current_command, sizeof(current_command));
-    }
-      
-  
-  putchar('\n');
-
   /////////////////////////////////////////////////////////////////
   // FORK
   /////////////////////////////////////////////////////////////////
@@ -262,7 +212,7 @@ int main(int argc, char *argv[])
 			    &video_render,
 			    "video_render",
 			    ILCLIENT_DISABLE_ALL_PORTS
-			    );
+			    | ILCLIENT_ENABLE_INPUT_BUFFERS);
 
   OMXstatus = ilclient_change_component_state(video_render, OMX_StateIdle);
   if (OMXstatus != OMX_ErrorNone)
@@ -286,7 +236,7 @@ int main(int argc, char *argv[])
   OMXstatus = OMX_SetConfig(ilclient_get_handle(video_render), OMX_IndexConfigDisplayRegion, &render_config);
   if(OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
-
+  
   /*
   DOES NOT WORK LEAVING AS A REMINDER
 
@@ -314,11 +264,72 @@ int main(int argc, char *argv[])
       fprintf(stderr, "unable to move video render component to Executing (1)\n");
       exit(EXIT_FAILURE);
     }
+  printf("video_render state is ");
   printState(ilclient_get_handle(video_render));
 
   //send(socket_fd, START_PREVIEW, sizeof(rcam_command), 0);
-  free(buffer);
+  ilclient_enable_port(video_render, 90);
 
+  ////////////////////////////////////////////////////////////
+  // SEND AND RECV
+  ////////////////////////////////////////////////////////////
+  
+  //handshake
+  printf("waiting to recive handshake ... \n");
+  read(new_sock, char_buffer, 11);
+  printf("handshake result = %s", char_buffer);
+  write(new_sock, "got\0", sizeof(char)*4);
+  
+
+  int count = 0;
+  long int num_bytes = 0;
+  enum rcam_command current_command = START_PREVIEW; 
+  void *buffer;
+  buffer = malloc(10000 * sizeof(char));
+  if (buffer == NULL)
+    printf("buffer == NULL");
+
+  printf("current_command = %d\n", current_command);
+
+  printf("sending command ...");
+  write(new_sock, &current_command, sizeof(current_command));
+  printf("sent command\n");
+  
+  current_command = NO_COMMAND;
+
+  while(count < 100)
+    {
+      count++;
+      
+      printf("waiting to recv bufferheader... ");
+      num_bytes = read(new_sock, &grabbed, sizeof(OMX_BUFFERHEADERTYPE));
+      printf("bufferheader recived %ld bytes\n", num_bytes);
+      
+      printf("waiting to recv buffer of size %d... ", grabbed.nAllocLen);
+      num_bytes = read(new_sock, buffer, grabbed.nAllocLen);
+      while (num_bytes < grabbed.nAllocLen)
+	{
+	  num_bytes += read(new_sock, buffer, grabbed.nAllocLen - num_bytes);
+	  printf("nAllocLen = %d, num_bytes = %ld\n", grabbed.nAllocLen, num_bytes);	  
+	}
+      printf("buffer recived, recived %ld bytes\n", num_bytes);
+      
+      //fix the bufferheader 
+      grabbed.pBuffer = (OMX_U8*)&buffer;
+
+      //empty buffer into render component
+      OMX_EmptyThisBuffer(ilclient_get_handle(video_render), &grabbed);
+      
+      //send no command
+      write(new_sock, &current_command, sizeof(current_command));
+    }
+      
+  
+  putchar('\n');
+
+
+
+  
   //sleep for 2 secs
   sleep(2);
 
@@ -327,6 +338,9 @@ int main(int argc, char *argv[])
   //CLEANUP
   /////////////////////////////////////////////////////////////////
 
+  //free buffer memory
+  free(buffer);
+  
   //Disable components
 
 
