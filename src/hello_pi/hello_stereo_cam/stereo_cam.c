@@ -263,7 +263,9 @@ int main(int argc, char *argv[])
   if(OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
   
-  
+  //ask ilclient to allocate buffers for video_render
+  ilclient_enable_port_buffers(video_render, 90, NULL, NULL,  NULL);
+  ilclient_enable_port(video_render, 90);
 
 
   /*
@@ -296,9 +298,6 @@ int main(int argc, char *argv[])
   printf("video_render state is ");
   printState(ilclient_get_handle(video_render));
 
-  //send(socket_fd, START_PREVIEW, sizeof(rcam_command), 0);
-  ilclient_enable_port(video_render, 90);
-
   ////////////////////////////////////////////////////////////
   // SEND AND RECV
   ////////////////////////////////////////////////////////////
@@ -326,8 +325,7 @@ int main(int argc, char *argv[])
   
   current_command = NO_COMMAND;
 
-
-  //FORGOT THE STUPID HANDSHAKE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  printf("nBufferSize = %d", render_params_nBufferSize);
 
   while(count < 100)
     {
