@@ -326,9 +326,6 @@ int main(int argc, char *argv[])
   
   current_command = NO_COMMAND;
 
-
-  //FORGOT THE STUPID HANDSHAKE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
   while(count < 100)
     {
       count++;
