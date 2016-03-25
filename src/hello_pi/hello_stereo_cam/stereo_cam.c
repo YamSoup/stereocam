@@ -50,6 +50,162 @@ enum rcam_command
 // FUNCTION PROTOTYPES
 /////////////////////////////////////////////////////////////////
 
+
+
+void print_OMX_AUDIO_PORTDEFINITIONTYPE(OMX_AUDIO_PORTDEFINITIONTYPE audio)
+{
+  /*
+  printf("   audio.cMIMEType = %s\n", audio.cMIMEType);
+  printf("   audio.pNativeRender = %d\n", (int)audio.pNativeRender);
+  printf("   audio.bFlagErrorConcealment = ");
+  audio.bFlagErrorConcealment ? printf("true\n") : printf("false\n");
+  printf("   audio.eEncoding = %d (enumeration not implemented)\n", (int)audio.eEncoding);
+  */
+  printf("Not implemented yet\n");
+}
+
+void print_OMX_VIDEO_PORTDEFINITIONTYPE(OMX_VIDEO_PORTDEFINITIONTYPE video)
+{
+  printf("OMX_VIDEO_PORT_DEFINITIONTYPE\n");
+  printf("   .video.cMIMEType = %s\n", video.cMIMEType);
+  printf("   .video.pNativeRender = %d ??\n", (int)video.pNativeRender);
+  printf("   .video.nFrameWidth = %d\n", (int)video.nFrameWidth);
+  printf("   .video.nFrameHeight = %d\n", (int)video.nFrameHeight);
+  printf("   .video.nStride = %d\n", (int)video.nStride);
+  printf("   .video.nSliceHeight = %d\n", (int)video.nSliceHeight);
+  printf("   .video.nBitrate = %d\n", (int)video.nBitrate);
+  printf("   .video.xFramerate >> 16 = %d\n", (int)video.xFramerate >>16 );
+  printf("   .video.bFlagErrorConcealment = ");
+  video.bFlagErrorConcealment ? printf("true\n") : printf("false\n");
+  printf("   .video.eCompressionFormat = ");
+  switch(video.eCompressionFormat)
+    {
+    case OMX_VIDEO_CodingUnused:     printf("OMX_VIDEO_CodingUnused\n"); break;
+    case OMX_VIDEO_CodingAutoDetect: printf("OMX_VIDEO_CodingAutoDetect\n"); break;
+    case OMX_VIDEO_CodingMPEG2:      printf("OMX_VIDEO_CodingMPEG2\n"); break;
+    case OMX_VIDEO_CodingH263:       printf("OMX_VIDEO_CodingH263\n"); break;
+    case OMX_VIDEO_CodingMPEG4:      printf("OMX_VIDEO_CodingMPEG4\n"); break;
+    case OMX_VIDEO_CodingWMV:        printf("OMX_VIDEO_CodingWMV\n"); break;
+    case OMX_VIDEO_CodingRV:         printf("OMX_VIDEO_CodingRV\n"); break;
+    case OMX_VIDEO_CodingAVC:        printf("OMX_VIDEO_CodingAVC\n"); break;
+    case OMX_VIDEO_CodingMJPEG:      printf("OMX_VIDEO_CodingMJPEG\n"); break;
+    case OMX_VIDEO_CodingMax:        printf("OMX_VIDEO_CodingMax (not a video format)\n"); break;
+    default: printf("Format not accounted for"); break;
+    }
+  switch(video.eColorFormat)
+    {
+    case OMX_COLOR_FormatUnused:                 printf("OMX_COLOR_FormatUnused\n"); break;
+    case OMX_COLOR_FormatMonochrome:             printf("OMX_COLOR_FormatMonochrome\n"); break;
+    case OMX_COLOR_Format8bitRGB332:             printf("OMX_COLOR_Format8bitRGB332\n"); break;
+    case OMX_COLOR_Format12bitRGB444:            printf("OMX_COLOR_Format12bitRGB444\n"); break;
+    case OMX_COLOR_Format16bitARGB4444:          printf("OMX_COLOR_Format16bitARGB4444\n"); break;
+    case OMX_COLOR_Format16bitARGB1555:          printf("OMX_COLOR_Format16bitARGB1555\n"); break;
+    case OMX_COLOR_Format16bitRGB565:            printf("OMX_COLOR_Format16bitRGB565\n"); break;
+    case OMX_COLOR_Format16bitBGR565:            printf("OMX_COLOR_Format16bitBGR565\n"); break;
+    case OMX_COLOR_Format18bitRGB666:            printf("OMX_COLOR_Format18bitRGB666\n"); break;
+    case OMX_COLOR_Format18bitARGB1665:          printf("OMX_COLOR_Format18bitARGB1665\n"); break;
+    case OMX_COLOR_Format19bitARGB1666:          printf("OMX_COLOR_Format19bitARGB1666\n"); break;
+    case OMX_COLOR_Format24bitRGB888:            printf("OMX_COLOR_Format24bitRGB888\n"); break;
+    case OMX_COLOR_Format24bitBGR888:            printf("OMX_COLOR_Format24bitBGR888\n"); break;
+    case OMX_COLOR_Format24bitARGB1887:          printf("OMX_COLOR_Format24bitARGB1887\n"); break;
+    case OMX_COLOR_Format25bitARGB1888:          printf("OMX_COLOR_Format25bitARGB1888\n"); break;
+    case OMX_COLOR_Format32bitBGRA8888:          printf("OMX_COLOR_Format32bitBGRA8888\n"); break;
+    case OMX_COLOR_Format32bitARGB8888:          printf("OMX_COLOR_Format32bitARGB8888\n"); break;
+    case OMX_COLOR_FormatYUV411Planar:           printf("OMX_COLOR_FormatYUV411Planar\n"); break;
+    case OMX_COLOR_FormatYUV411PackedPlanar:     printf("OMX_COLOR_FormatYUV411PackedPlanar\n"); break;
+    case OMX_COLOR_FormatYUV420Planar:           printf("OMX_COLOR_FormatYUV420Planar\n"); break;
+    case OMX_COLOR_FormatYUV420PackedPlanar:     printf("OMX_COLOR_FormatYUV420PackedPlanar\n"); break;
+    case OMX_COLOR_FormatYUV420SemiPlanar:       printf("OMX_COLOR_FormatYUV420SemiPlanar\n"); break;
+    case OMX_COLOR_FormatYUV422Planar:           printf("OMX_COLOR_FormatYUV422Planar\n"); break;
+    case OMX_COLOR_FormatYUV422PackedPlanar:     printf("OMX_COLOR_FormatYUV422PackedPlanar\n"); break;
+    case OMX_COLOR_FormatYUV422SemiPlanar:       printf("OMX_COLOR_FormatYUV422SemiPlanar\n"); break;
+    case OMX_COLOR_FormatYCbYCr:                 printf("OMX_COLOR_FormatYCbYCr\n"); break;
+    case OMX_COLOR_FormatYCrYCb:                 printf("OMX_COLOR_FormatYCrYCb\n"); break;
+    case OMX_COLOR_FormatCbYCrY:                 printf("OMX_COLOR_FormatCbYCrY\n"); break;
+    case OMX_COLOR_FormatCrYCbY:                 printf("OMX_COLOR_FormatCrYCbY\n"); break;
+    case OMX_COLOR_FormatYUV444Interleaved:      printf("OMX_COLOR_FormatYUV444Interleaved\n"); break;
+    case OMX_COLOR_FormatRawBayer8bit:           printf("OMX_COLOR_FormatRawBayer8bit\n"); break;
+    case OMX_COLOR_FormatRawBayer10bit:          printf("OMX_COLOR_FormatRawBayer10bit\n"); break;
+    case OMX_COLOR_FormatRawBayer8bitcompressed: printf("OMX_COLOR_FormatRawBayer8bitcompressed\n"); break;
+    case OMX_COLOR_FormatL2:                     printf("OMX_COLOR_FormatL2\n"); break;
+    case OMX_COLOR_FormatL4:                     printf("OMX_COLOR_FormatL4\n"); break;
+    case OMX_COLOR_FormatL8:                     printf("OMX_COLOR_FormatL8\n"); break;
+    case OMX_COLOR_FormatL16:                    printf("OMX_COLOR_FormatL16\n"); break;
+    case OMX_COLOR_FormatL24:                    printf("OMX_COLOR_FormatL24\n"); break;
+    case OMX_COLOR_FormatL32:                    printf("OMX_COLOR_FormatL32\n"); break;
+    case OMX_COLOR_FormatYUV420PackedSemiPlanar: printf("OMX_COLOR_FormatYUV420PackedSemiPlanar\n"); break;
+    case OMX_COLOR_FormatYUV422PackedSemiPlanar: printf("OMX_COLOR_FormatYUV422PackedSemiPlanar\n"); break;
+    case OMX_COLOR_Format18BitBGR666:            printf("OMX_COLOR_Format18BitBGR666\n"); break;
+    case OMX_COLOR_Format24BitARGB6666:          printf("OMX_COLOR_Format24BitARGB6666\n"); break;
+    case OMX_COLOR_Format24BitABGR6666:          printf("OMX_COLOR_Format24BitABGR6666\n"); break;
+    case OMX_COLOR_FormatMax:                    printf("OMX_COLOR_FormatMax (not a format)\n"); break;
+    default: printf("Format not accounted for\n"); break;
+    }
+  printf("pNativeWindow = %d\n", (int)video.pNativeWindow);
+}
+
+void print_OMX_IMAGE_PORTDEFINITIONTYPE(OMX_IMAGE_PORTDEFINITIONTYPE image)
+{
+  printf("Not implemented yet\n");
+}
+
+void print_OMX_OTHER_PORTDEFINITIONTYPE(OMX_OTHER_PORTDEFINITIONTYPE other)
+{
+  printf("Not implemented yet\n");
+}
+
+//prints port params
+void print_OMX_PARAM_PORTDEFINITIONTYPE(OMX_PARAM_PORTDEFINITIONTYPE params)
+{
+  printf("-----------------------\n");
+  printf("nSize = %d\n", (int)params.nSize);
+  printf("nVersion.nVersion.nVersionMajor = %d\n", (int)params.nVersion.s.nVersionMajor);
+  printf("                 .nVersionMinor = %d\n", (int)params.nVersion.s.nVersionMinor);
+  printf("                 .nReviseion = %d\n",    (int)params.nVersion.s.nRevision);
+  //printf("                 .nStep = &d\n",         (int)params.nVersion.s.nStep);
+  printf("nPortIndex = %d\n", params.nPortIndex);
+  switch(params.eDir)
+    {
+    case OMX_DirInput: printf("eDir = OMX_DirInput (Input port)\n"); break;
+    case OMX_DirOutput: printf("eDir = OMX_DirOutput (Output port)\n"); break;
+    case OMX_DirMax: printf("eDir = OMX_DirMax (?)\n"); break;
+    default: printf("Possible Error: unable to determin direction of port\n");
+    } 
+  printf("nBufferCountActual = %d\n", (int)params.nBufferCountActual);
+  printf("nBufferCountMin = %d\n", (int)params.nBufferCountMin);
+  printf("nBufferSize = %d\n", (int)params.nBufferSize);
+  printf("bEnabled = "); params.bEnabled ? printf("true\n") : printf("false\n");
+  printf("bPopulated = "); params.bPopulated ? printf("true\n") : printf("false\n");
+  switch(params.eDomain)
+    {
+    case OMX_PortDomainAudio:
+      printf("eDomain = OMX_PortDomainAudio (Audio Port)\n");
+      print_OMX_AUDIO_PORTDEFINITIONTYPE(params.format.audio);
+      break;
+    case OMX_PortDomainVideo:
+      printf("eDomain = OMX_PortDomainVideo (Video Port)\n");
+      print_OMX_VIDEO_PORTDEFINITIONTYPE(params.format.video);
+      break;
+    case OMX_PortDomainImage:
+      printf("eDomain = OMX_PortDomainImage (Image Port)\n");
+      print_OMX_IMAGE_PORTDEFINITIONTYPE(params.format.image);
+      break;
+    case OMX_PortDomainOther:
+      printf("eDomain = OMX_PortDomainOther (Other Port)\n");
+      print_OMX_OTHER_PORTDEFINITIONTYPE(params.format.other);
+      break;
+    default:
+      printf("eDomain = is another type not accounted for (?)\n");
+      break;
+    }
+
+
+  printf("bBuffersContiguous = "); params.bBuffersContiguous ? printf("true\n") : printf("false\n");
+  printf("nBufferAlignment = %d\n", (int)params.nBufferAlignment);
+  
+  printf("-----------------------\n");
+}
+
 void printBits(void *toPrint);
 
 void printState(OMX_HANDLETYPE handle);
@@ -246,7 +402,20 @@ int main(int argc, char *argv[])
   if (OMXstatus != OMX_ErrorNone)
     printf("Error Setting video render port parameters (1)");
 
+  //check the port params
+  memset(&render_params, 0, sizeof(render_params));
+  render_params.nVersion.nVersion = OMX_VERSION;
+  render_params.nSize = sizeof(render_params);
+  render_params.nPortIndex = 90;
 
+  OMXstatus = OMX_GetConfig(ilclient_get_handle(video_render), OMX_IndexParamPortDefinition, &render_params);
+  if (OMXstatus != OMX_ErrorNone)
+    printf("Error Getting video render port parameters (1)");
+
+  print_OMX_PARAM_PORTDEFINITIONTYPE(render_params);
+
+  //set the position on the screen
+  /*
   render_config.set = (OMX_DISPLAYSETTYPE)(OMX_DISPLAY_SET_DEST_RECT
 					   |OMX_DISPLAY_SET_FULLSCREEN
 					   |OMX_DISPLAY_SET_NOASPECT
@@ -262,8 +431,10 @@ int main(int argc, char *argv[])
   OMXstatus = OMX_SetConfig(ilclient_get_handle(video_render), OMX_IndexConfigDisplayRegion, &render_config);
   if(OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
-  
+  */ 
+
   //ask ilclient to allocate buffers for video_render
+  printf("enable video_render_input port\n");
   ilclient_enable_port_buffers(video_render, 90, NULL, NULL,  NULL);
   ilclient_enable_port(video_render, 90);
 
@@ -297,6 +468,7 @@ int main(int argc, char *argv[])
     }
   printf("video_render state is ");
   printState(ilclient_get_handle(video_render));
+  printf("***\n");
 
   ////////////////////////////////////////////////////////////
   // SEND AND RECV
@@ -307,13 +479,15 @@ int main(int argc, char *argv[])
   read(new_sock, char_buffer, 11);
   printf("handshake result = %s", char_buffer);
   write(new_sock, "got\0", sizeof(char)*4);
-  
+
+  void * temp_buffer;
+  temp_buffer = malloc(render_params.nBufferSize);  
 
   int count = 0;
   long int num_bytes = 0;
   enum rcam_command current_command = START_PREVIEW; 
   void *buffer;
-  buffer = malloc(10000 * sizeof(char));
+  buffer = malloc(115200 * sizeof(char));
   if (buffer == NULL)
     printf("buffer == NULL");
 
@@ -325,36 +499,38 @@ int main(int argc, char *argv[])
   
   current_command = NO_COMMAND;
 
-  printf("nBufferSize = %d", render_params_nBufferSize);
+  printf("*** nBufferSize = %d\n", render_params.nBufferSize);
 
   while(count < 100)
-    {
+    {      
       count++;
-      //get a buffer to process
-      video_render_in = ilclient_get_output_buffer(video_render, 90, 1);
+      printf("count = %d\n", count);
 
-      printf("waiting to recv buffer of size %d... ", 1000);
+      //printf("get a buffer to process\n");
+      //video_render_in = ilclient_get_output_buffer(video_render, 90, 1);
+
+      printf("waiting to recv buffer of size %d... ", render_params.nBufferSize);
       num_bytes = read(new_sock,
-		       video_render_in->pBuffer,
+		       temp_buffer,
 		       render_params.nBufferSize);
       while (num_bytes < render_params.nBufferSize)
 	{
 	  num_bytes += read(new_sock,
-			    video_render_in->pBuffer + num_bytes,
+			    temp_buffer + num_bytes,
 			    render_params.nBufferSize - num_bytes);
 	  printf("BufferSize = %d, num_bytes = %ld\n", render_params.nBufferSize, num_bytes);	  
 	}
       printf("buffer recived, recived %ld bytes\n", num_bytes);
       
       //change nAllocLen in bufferheader
-      video_render_in->nAllocLen = render_params.nBufferSize;
+      //video_render_in->nAllocLen = render_params.nBufferSize;
 
       //empty buffer into render component
-      OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_render_in);
-      
+      //OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_render_in);
+      //printf("Emptied buffer\n");
+
       //send no command
-      write(new_sock, &current_command, sizeof(current_command));
-      
+      write(new_sock, &current_command, sizeof(current_command));      
     }
       
   
