@@ -13,14 +13,11 @@ Desirable commands
    White Balence
    Other camera Options
 
-Preview is sent via TCP protocal so that the relevent buffer and information can be sent 1 after the other
-(only othe option is to write my own protocol using UDP prepacking the buffer with relevent info)
-Having looked at the options TCP offers the best option
 NOTE this will not be portable code (due to it realying both ends to have the same endieness) !
 
 Even while displaying preview remote camera should accept and process commands
 The commands will be identified by an integer followed by the relevent(if any) information to be processed
-when no command is needed the main pi will send 0 commands will use the same TCP connection
+when no command is needed the main pi will send NO_COMMAND the commands will use the same TCP connection
  */
 
 #include <stdio.h>
@@ -40,12 +37,9 @@ when no command is needed the main pi will send 0 commands will use the same TCP
 #include "bcm_host.h"
 #include "ilclient.h"
 
-#define IP_ADD "127.0.0.1"
-		      //#define IP_ADD "192.168.0.13"
+		      //#define IP_ADD "127.0.0.1"
+#define IP_ADD "192.168.0.13"
 #define SERV_PORT "8039"
-
-#define SOCKTYPE_TCP 1
-#define SOCKTYPE_UDP 2
 
 //possibly put this enum in a header file to easily include in other programs
 enum rcam_command
@@ -62,23 +56,22 @@ enum rcam_command
 // FUNCTION PROTOTYPES
 ////////////////////////////////////////////////////////////////
 
+
+//move these into seperate libary for sockets
+#define SOCKTYPE_TCP 1
+#define SOCKTYPE_UDP 2
 void write_all(int socket, const void *buf, size_t num_bytes);
-
 void read_all(int socket, const void *buf, size_t num_bytes);
-
 int getAndConnectSocket(int socket_type);
 
-void setCaptureRes(COMPONENT_T *camera, int width, int height);
-
-void setPreviewRes(COMPONENT_T *camera, int width, int height);
-
+//move these into a seperate libary for printing OMX things
 void print_OMX_PARAM_PORTDEFINITIONTYPE(OMX_PARAM_PORTDEFINITIONTYPE params);
-
 void printBits(void *toPrint);
-
 void printState(OMX_HANDLETYPE handle);
-
 char *err2str(int err);
+
+void setCaptureRes(COMPONENT_T *camera, int width, int height);
+void setPreviewRes(COMPONENT_T *camera, int width, int height);
 
 void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 
@@ -86,7 +79,7 @@ void error_callback(void *userdata, COMPONENT_T *comp, OMX_U32 data);
 // MAIN
 int main(int argc, char *argv[])
 {
-    int numbytes, preview_width, preview_height, count = 0;
+    int preview_width, preview_height, count = 0;
     int socket_fd;
     enum rcam_command current_command;
     bool deliver_preview = false;
@@ -157,7 +150,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unable to move camera component to Executing (1)\n");
         exit(EXIT_FAILURE);
     }
-
     printState(ilclient_get_handle(camera));
 
     //SOCKET STUFF
@@ -214,9 +206,9 @@ int main(int argc, char *argv[])
 	  //send buffer, checks lengths to ensure all data is sent
 	  printf("nAllocLen = %d\n", previewHeader->nAllocLen);
 	  printf("sending buffer ... ");
-	  num_bytes = write(socket_fd, previewHeader->pBuffer, sizeof(previewHeader->nAllocLen));
+	  num_bytes = write(socket_fd, previewHeader->pBuffer, previewHeader->nAllocLen);
 	  while (num_bytes < previewHeader->nAllocLen)
-	    num_bytes += write(socket_fd, previewHeader + num_bytes, previewHeader->nAllocLen - num_bytes);	  
+	    num_bytes += write(socket_fd, previewHeader->pBuffer + num_bytes, previewHeader->nAllocLen - num_bytes);	  
 	  printf("buffer sent, %ld bytes \n", num_bytes);
 	}
       else
