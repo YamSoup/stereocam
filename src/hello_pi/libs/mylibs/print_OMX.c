@@ -1,4 +1,4 @@
-//a collection of functions to print OMX Types
+
 
 void print_OMX_AUDIO_PORTDEFINITIONTYPE(OMX_AUDIO_PORTDEFINITIONTYPE audio)
 {
@@ -102,6 +102,7 @@ void print_OMX_OTHER_PORTDEFINITIONTYPE(OMX_OTHER_PORTDEFINITIONTYPE other)
   printf("Not implemented yet\n");
 }
 
+//prints port params
 void print_OMX_PARAM_PORTDEFINITIONTYPE(OMX_PARAM_PORTDEFINITIONTYPE params)
 {
   printf("-----------------------\n");

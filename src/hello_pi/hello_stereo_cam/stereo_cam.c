@@ -1,3 +1,4 @@
+
   /*
     use ilclient_GetParameter, ilclient_SetParameter to setup components before executing state
     use ilclient_GetConfig and ilclient_SetConfig to change settings while in executing state
@@ -49,8 +50,6 @@ enum rcam_command
 /////////////////////////////////////////////////////////////////
 // FUNCTION PROTOTYPES
 /////////////////////////////////////////////////////////////////
-
-
 
 void print_OMX_AUDIO_PORTDEFINITIONTYPE(OMX_AUDIO_PORTDEFINITIONTYPE audio)
 {
@@ -431,7 +430,7 @@ int main(int argc, char *argv[])
   OMXstatus = OMX_SetConfig(ilclient_get_handle(video_render), OMX_IndexConfigDisplayRegion, &render_config);
   if(OMXstatus != OMX_ErrorNone)
     printf("Error Setting Parameter. Error = %s\n", err2str(OMXstatus));
-  */ 
+  */
 
   //ask ilclient to allocate buffers for video_render
   printf("enable video_render_input port\n");
@@ -481,15 +480,11 @@ int main(int argc, char *argv[])
   write(new_sock, "got\0", sizeof(char)*4);
 
   void * temp_buffer;
-  temp_buffer = malloc(render_params.nBufferSize);  
+  temp_buffer = malloc(render_params.nBufferSize + 1 );  
 
   int count = 0;
   long int num_bytes = 0;
   enum rcam_command current_command = START_PREVIEW; 
-  void *buffer;
-  buffer = malloc(115200 * sizeof(char));
-  if (buffer == NULL)
-    printf("buffer == NULL");
 
   printf("current_command = %d\n", current_command);
 
@@ -502,13 +497,12 @@ int main(int argc, char *argv[])
   printf("*** nBufferSize = %d\n", render_params.nBufferSize);
 
   while(count < 100)
-    {      
+    {
+      printState(ilclient_get_handle(video_render));
       count++;
       printf("count = %d\n", count);
 
-      //printf("get a buffer to process\n");
-      //video_render_in = ilclient_get_output_buffer(video_render, 90, 1);
-
+      printf("get a buffer to process\n");
       printf("waiting to recv buffer of size %d... ", render_params.nBufferSize);
       num_bytes = read(new_sock,
 		       temp_buffer,
@@ -518,16 +512,19 @@ int main(int argc, char *argv[])
 	  num_bytes += read(new_sock,
 			    temp_buffer + num_bytes,
 			    render_params.nBufferSize - num_bytes);
-	  printf("BufferSize = %d, num_bytes = %ld\n", render_params.nBufferSize, num_bytes);	  
 	}
       printf("buffer recived, recived %ld bytes\n", num_bytes);
       
       //change nAllocLen in bufferheader
-      //video_render_in->nAllocLen = render_params.nBufferSize;
+      video_render_in = ilclient_get_input_buffer(video_render, 90, 1);
+      memcpy(video_render_in->pBuffer, temp_buffer, render_params.nBufferSize);
+      printf("copied buffer form temp into video_render_in\n");
+      //fix alloc len
+      video_render_in->nFilledLen = render_params.nBufferSize;
 
       //empty buffer into render component
-      //OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_render_in);
-      //printf("Emptied buffer\n");
+      OMX_EmptyThisBuffer(ilclient_get_handle(video_render), video_render_in);
+      printf("Emptied buffer\n");
 
       //send no command
       write(new_sock, &current_command, sizeof(current_command));      
@@ -536,9 +533,6 @@ int main(int argc, char *argv[])
   
   putchar('\n');
 
-
-
-  
   //sleep for 2 secs
   sleep(2);
 
@@ -548,7 +542,7 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////
 
   //free buffer memory
-  free(buffer);
+  free(temp_buffer);
   
   //Disable components
 
