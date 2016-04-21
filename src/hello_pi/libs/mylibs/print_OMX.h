@@ -11,6 +11,9 @@ Native window/Render/device type is a void * possibly show as an address
 
 *******************************************************************************/
 
+#ifndef _PRINT_OMX_H
+#define _PRINT_OMX_H
+
 char *err2str(int err);
 
 void printState(OMX_HANDLETYPE handle);
@@ -36,3 +39,4 @@ void print_OMX_IMAGE_PORTDEFINITIONTYPE(OMX_IMAGE_PORTDEFINITIONTYPE image);
 
 void print_OMX_PARAM_PORTDEFINITIONTYPE(OMX_PARAM_PORTDEFINITIONTYPE params);
 
+#endif /* _PRINT_OMX_H */

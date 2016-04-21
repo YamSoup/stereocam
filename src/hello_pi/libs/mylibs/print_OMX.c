@@ -11,6 +11,12 @@ Native window/Render/device type is a void * possibly show as an address
 
 *******************************************************************************/
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#include "IL/OMX_Broadcom.h"
+
 char *err2str(int err) {
   switch (err)
   {
@@ -174,7 +180,7 @@ void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current)
 // Below this line are the structures needed for Port stuff
 //**************************************************************
 
-void print_OMX_AUDIO_ENCODING(OMX_AUDIO_ENCODING eEncoding)
+void print_OMX_AUDIO_CODINGTYPE(OMX_AUDIO_CODINGTYPE eEncoding)
 {
     switch(eEncoding)
     {
@@ -207,7 +213,7 @@ void print_OMX_AUDIO_ENCODING(OMX_AUDIO_ENCODING eEncoding)
     case OMX_AUDIO_CodingRA: 	        printf("OMX_AUDIO_CodingRA - Any variant of RA encoded data"); break;
     case OMX_AUDIO_CodingMIDI:      	printf("OMX_AUDIO_CodingMIDI - Any variant of MIDI encoded data"); break;
     case OMX_AUDIO_CodingMax:           printf("OMX_AUDIO_CodingMax"); break;
-    default:                            printf("Format not accounted for = %d", audio.eEncoding); break;
+    default:                            printf("Format not accounted for = %d", eEncoding); break;
     }
     putchar('\n');
 }
@@ -300,15 +306,15 @@ void print_OMX_COLOR_FORMATTYPE(OMX_COLOR_FORMATTYPE eColorFormat)
     case OMX_COLOR_Format24BitARGB6666:          printf("OMX_COLOR_Format24BitARGB6666"); break;
     case OMX_COLOR_Format24BitABGR6666:          printf("OMX_COLOR_Format24BitABGR6666"); break;
     case OMX_COLOR_FormatMax:                    printf("OMX_COLOR_FormatMax (not a format)"); break;
-    default:                                     printf("Format not accounted for\n"); break;
+    default:                                     printf("Format not accounted for"); break;
     }
     putchar('\n');
 }
 
 void print_OMX_OTHER_PORTDEFINITIONTYPE(OMX_OTHER_PORTDEFINITIONTYPE other)
 {
-    //needs to be cast
-    switch((OMX_OTHER_FORMATTYPE)other)
+  //OMX_OTHER_PORTDEFINITIONTYPE is a stucture with just one member eFormat of type OMX_OTHER_FORMATTYPE
+  switch(other.eFormat)
     {
     case OMX_OTHER_FormatTime:              printf("OMX_OTHER_FormatTime - Transmission of various timestamps, elapsed time, time deltas, etc"); break;
     case OMX_OTHER_FormatPower:             printf("OMX_OTHER_FormatPower - Perhaps used for enabling/disabling power management, setting clocks?"); break;
@@ -316,6 +322,7 @@ void print_OMX_OTHER_PORTDEFINITIONTYPE(OMX_OTHER_PORTDEFINITIONTYPE other)
     case OMX_OTHER_FormatBinary:            printf("OMX_OTHER_FormatBinary - Arbitrary binary data"); break;
     case OMX_OTHER_FormatVendorReserved:    printf("OMX_OTHER_FormatVendorReserved - Starting value for vendor specific formats"); break;
     case OMX_OTHER_FormatMax:               printf("OMX_OTHER_FormatMax (not a format)"); break;
+    default:                                printf("Format not accounted for"); break;
     }
     putchar('\n');
 }
@@ -327,7 +334,7 @@ void print_OMX_AUDIO_PORTDEFINITIONTYPE(OMX_AUDIO_PORTDEFINITIONTYPE audio)
     printf("   audio.bFlagErrorConcealment = ");
     audio.bFlagErrorConcealment ? printf("true\n") : printf("false\n");
     printf("   audio.eEncoding = ");
-    print_OMX_AUDIO_ENCODING(audio.encoding);
+    print_OMX_AUDIO_CODINGTYPE(audio.eEncoding);
 }
 
 void print_OMX_VIDEO_PORTDEFINITIONTYPE(OMX_VIDEO_PORTDEFINITIONTYPE video)
@@ -344,7 +351,7 @@ void print_OMX_VIDEO_PORTDEFINITIONTYPE(OMX_VIDEO_PORTDEFINITIONTYPE video)
     printf("   video.bFlagErrorConcealment = ");
     video.bFlagErrorConcealment ? printf("true\n") : printf("false\n");
     printf("   video.eCompressionFormat = ");
-    print_OMX_COLOR_FORMATTYPE(eCompressionFormat);
+    print_OMX_COLOR_FORMATTYPE(video.eCompressionFormat);
     printf("   video.eColorFormat = ");
     print_OMX_COLOR_FORMATTYPE(video.eColorFormat);
     printf("   video.pNativeWindow = %d\n", (int)video.pNativeWindow);

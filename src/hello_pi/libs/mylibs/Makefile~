@@ -1,0 +1,5 @@
+OBJS=OMX_Print.o
+LIB=OMX_Print.a
+
+include ../../Makefile.include
+
