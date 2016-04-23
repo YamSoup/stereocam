@@ -14,20 +14,16 @@ Native window/Render/device type is a void * possibly show as an address
 #ifndef _PRINT_OMX_H
 #define _PRINT_OMX_H
 
-char *err2str(int err);
-
 void printState(OMX_HANDLETYPE handle);
-
 void printBits(void *toPrint);
-
 void print_OMX_CONFIG_DISPLAYREGIONTYPE(OMX_CONFIG_DISPLAYREGIONTYPE current);
-
+char *err2str(int err);
 
 //**************************************************************
 // Below this line are the structures needed for Port stuff
 //**************************************************************
 
-void print_OMX_AUDIO_ENCODING(OMX_AUDIO_ENCODING eEncoding);
+void print_OMX_AUDIO_CODINGTYPE(OMX_AUDIO_CODINGTYPE eEncoding);
 void print_OMX_VIDEO_CODINGTYPE(OMX_VIDEO_CODINGTYPE eCompressionFormat);
 void print_OMX_IMAGE_CODINGTYPE(OMX_IMAGE_CODINGTYPE eCompressionFormat);
 void print_OMX_COLOR_FORMATTYPE(OMX_COLOR_FORMATTYPE eColorFormat);

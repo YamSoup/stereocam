@@ -15,7 +15,12 @@ Native window/Render/device type is a void * possibly show as an address
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "interface/vcos/vcos.h"
+#include "interface/vcos/vcos_logging.h"
+#include "interface/vmcs_host/vchost.h"
+
 #include "IL/OMX_Broadcom.h"
+#include "print_OMX.h"
 
 char *err2str(int err) {
   switch (err)

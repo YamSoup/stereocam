@@ -1,5 +1,6 @@
 make -C libs/ilclient clean
 make -C libs/vgfont clean
+make -C libs/mylibs clean
 make -C hello_world clean
 make -C hello_triangle clean
 make -C hello_triangle2 clean
@@ -14,10 +15,12 @@ make -C hello_videocube clean
 make -C hello_teapot clean
 make -C hello_fft clean
 make -C hello_camera clean
-make -C hello_stereo_cam clean
+make -C hello_stereocam clean
+make -C hello_remotecam clean
 
 make -C libs/ilclient
 make -C libs/vgfont
+make -C libs/mylibs
 make -C hello_world
 make -C hello_triangle
 make -C hello_triangle2
@@ -32,5 +35,7 @@ make -C hello_videocube
 make -C hello_teapot
 make -C hello_fft
 make -C hello_camera
-make -C hello_stereo_cam
+make -C hello_stereocam
+make -C hello_remotecam
+
 
