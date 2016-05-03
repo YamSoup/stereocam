@@ -1,0 +1,5 @@
+This is an old version of attemptes to make a stereocam
+Which hijacked the ILCLIENT examples and Makefiles
+
+The latest attempt is pistereocam much more independent with common fuctions sepreated from the 2 main programs.
+Also has its own Makefiles.
